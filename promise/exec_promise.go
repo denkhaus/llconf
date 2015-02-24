@@ -114,6 +114,16 @@ func (p ExecPromise) Desc(arguments []Constant) string {
 }
 
 func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool {
+	command, err := p.getCommand(arguments, ctx)
+	if err != nil {
+		ctx.Logger.Error.Print(err.Error())
+		return false
+	}
+
+	if ctx.Debug || p.Type == ExecChange {
+		ctx.Logger.Info.Print(stack)
+		ctx.Logger.Info.Print("[" + p.Type.String() + "] " + strings.Join(command.Args, " ") + "\n")
+	}
 
 	quit := make(chan bool)
 	go func(quit chan bool) {
@@ -125,11 +135,6 @@ func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 		}
 	} (quit)
 
-	command, err := p.getCommand(arguments, ctx)
-	if err != nil {
-		ctx.Logger.Error.Print(err.Error())
-		return false
-	}
 
 	ctx.ExecOutput.Reset()
 	command.Stdout = ctx.ExecOutput
@@ -141,8 +146,6 @@ func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 
 	successful := (err == nil)
 	if ctx.Debug || p.Type == ExecChange {
-		ctx.Logger.Info.Print(stack)
-		ctx.Logger.Info.Print("[" + p.Type.String() + "] " + strings.Join(command.Args, " ") + "\n")
 		if ctx.ExecOutput.Len() > 0 {
 			ctx.Logger.Info.Print(ctx.ExecOutput.String())
 		}
