@@ -131,7 +131,7 @@ func checkPromise(p libpromise.Promise, logi, loge *log.Logger, args []string) {
 	vars := libpromise.Variables{}
 	vars["input_dir"] = serve_cfg.inp_dir
 	vars["work_dir"] = serve_cfg.workdir
-	exe := os.Args[0]
+	exe := filepath.Clean(os.Args[0])
 	vars["executable"] = exe
 	env := []string{}
 

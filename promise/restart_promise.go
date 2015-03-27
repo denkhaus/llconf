@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"strings"
 	"syscall"
+	"path/filepath"
 )
 
 type RestartPromise struct {
@@ -41,7 +42,7 @@ func (p RestartPromise) Eval(arguments []Constant, ctx *Context, stack string) b
 		return false
 	}
 
-	exe := os.Args[0]
+	exe := filepath.Clean(os.Args[0])
 
 	os.Rename(newexe, exe)
 	ctx.Logger.Info.Print(fmt.Printf("restarted llconf: llconf %v", ctx.Args))
