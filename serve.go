@@ -10,8 +10,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/kardianos/osext"
-
 	"bytes"
 	"github.com/d3media/llconf/compiler"
 	libpromise "github.com/d3media/llconf/promise"
@@ -133,7 +131,7 @@ func checkPromise(p libpromise.Promise, logi, loge *log.Logger, args []string) {
 	vars := libpromise.Variables{}
 	vars["input_dir"] = serve_cfg.inp_dir
 	vars["work_dir"] = serve_cfg.workdir
-	exe, _ := osext.Executable()
+	exe := os.Args[0]
 	vars["executable"] = exe
 	env := []string{}
 

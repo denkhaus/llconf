@@ -1,7 +1,6 @@
 package promise
 
 import (
-	"github.com/kardianos/osext"
 	"errors"
 	"fmt"
 	"io"
@@ -42,10 +41,7 @@ func (p RestartPromise) Eval(arguments []Constant, ctx *Context, stack string) b
 		return false
 	}
 
-	exe, err := osext.Executable()
-	if err != nil {
-		return false
-	}
+	exe := os.Args[0]
 
 	os.Rename(newexe, exe)
 	ctx.Logger.Info.Print(fmt.Printf("restarted llconf: llconf %v", ctx.Args))
@@ -58,6 +54,7 @@ func (p RestartPromise) Eval(arguments []Constant, ctx *Context, stack string) b
 		return false
 	}
 }
+
 func (p RestartPromise) restartLLConf(exe string, args []string, stdout, stderr io.Writer) (*exec.Cmd, error) {
 	cmd := exec.Command(exe, args...)
 	cmd.Stdout = stdout
