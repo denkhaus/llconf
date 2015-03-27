@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"bitbucket.org/kardianos/osext"
+	"github.com/kardianos/osext"
 
 	"bytes"
 	"github.com/d3media/llconf/compiler"

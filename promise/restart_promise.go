@@ -1,7 +1,7 @@
 package promise
 
 import (
-	"bitbucket.org/kardianos/osext"
+	"github.com/kardianos/osext"
 	"errors"
 	"fmt"
 	"io"
