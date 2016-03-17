@@ -149,7 +149,7 @@ func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 			ctx.Logger.Info.Print(ctx.ExecOutput.String())
 		}
 		if !successful {
-			ctx.Logger.Info.Print(err.Error())
+			ctx.Logger.Error.Print(err.Error())
 		}
 	}
 	//non blocking send

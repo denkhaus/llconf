@@ -1,4 +1,4 @@
-package main
+package commands
 
 import (
 	"errors"
@@ -11,17 +11,12 @@ import (
 	"time"
 
 	"bytes"
+
+	"github.com/codegangsta/cli"
 	"github.com/denkhaus/llconf/compiler"
 	libpromise "github.com/denkhaus/llconf/promise"
+	"github.com/sirupsen/logrus"
 )
-
-var serve = &Command{
-	Name:      "serve",
-	Usage:     "serve [arguments...]",
-	ShortHelp: "serve",
-	LongHelp:  "bla",
-	Run:       runServ,
-}
 
 var serve_cfg struct {
 	root_promise string
@@ -34,22 +29,11 @@ var serve_cfg struct {
 	debug        bool
 }
 
-func init() {
-	serve.Flag.IntVar(&serve_cfg.interval, "interval", 300, "set the minium time between promise-tree evaluation")
-	serve.Flag.BoolVar(&serve_cfg.verbose, "verbose", false, "enable verbose output")
-	serve.Flag.StringVar(&serve_cfg.root_promise, "promise", "done", "the promise that will be used as the root of the promise tree")
-	serve.Flag.StringVar(&serve_cfg.inp_dir, "input-folder", "", "the folder containing input files")
-	serve.Flag.BoolVar(&serve_cfg.use_syslog, "syslog", false, "output to syslog")
-	serve.Flag.StringVar(&serve_cfg.runlog_path, "runlog", "", "path to the runlog")
-	serve.Flag.BoolVar(&serve_cfg.debug, "debug", false, "turn on debugging output")
-}
-
-func runServ(args []string) {
-	parseArguments(args)
+func Serve(ctx *cli.Context, logger *logrus.Logger) {
+	parseArguments(ctx, logger)
 	logi, loge := setupLogging()
 
 	quit := make(chan int)
-
 	var promise_tree libpromise.Promise
 
 	for {
@@ -58,18 +42,18 @@ func runServ(args []string) {
 			q <- 0
 		}(quit)
 
-		new_promise_tree, err := updatePromise(serve_cfg.inp_dir, serve_cfg.root_promise)
-		if err == nil {
-			promise_tree = new_promise_tree
+		if npt, err := updatePromise(serve_cfg.inp_dir, serve_cfg.root_promise); err != nil {
+			logger.Errorf("error while parsing input folder: %v", err)
 		} else {
-			loge.Printf("error while parsing input folder: %v\n", err)
+			promise_tree = npt
 		}
 
 		if promise_tree != nil {
 			checkPromise(promise_tree, logi, loge, flag.Args())
 		} else {
-			fmt.Fprintf(os.Stderr, "could not find any valid promises\n")
+			logger.Error("could not find any valid promises")
 		}
+
 		<-quit
 	}
 }
@@ -86,30 +70,35 @@ func setupLogging() (logi, loge *log.Logger) {
 	}
 }
 
-func parseArguments(args []string) {
+func parseArguments(ctx *cli.Context, logger *logrus.Logger) {
+	args := ctx.Args()
+
 	switch len(args) {
 	case 0:
-		fmt.Fprintf(os.Stderr, "no workdir specified\n")
-		os.Exit(1)
-		return
+		logger.Fatal("no workdir specified")
 	case 1:
-		serve_cfg.workdir = args[0]
+		serve_cfg.workdir = args.First()
 	default:
-		fmt.Fprintf(os.Stderr, "argument count mismatch")
-		os.Exit(1)
+		logger.Fatal("argument count mismatch")
 	}
 
+	serve_cfg.inp_dir = ctx.String("input-folder")
 	if serve_cfg.inp_dir == "" {
 		serve_cfg.inp_dir = filepath.Join(serve_cfg.workdir, "input")
 	}
-
+	serve_cfg.runlog_path = ctx.String("runlog")
 	if serve_cfg.runlog_path == "" {
 		serve_cfg.runlog_path = filepath.Join(serve_cfg.workdir, "runlog")
 	}
 
+	serve_cfg.root_promise = ctx.GlobalString("promise")
+	serve_cfg.interval = ctx.Int("interval")
+	serve_cfg.verbose = ctx.Bool("verbose")
+	serve_cfg.use_syslog = ctx.Bool("syslog")
+	serve_cfg.debug = ctx.Bool("debug")
+
 	// when run as daemon, the home folder isn't set
-	home := os.Getenv("HOME")
-	if home == "" {
+	if os.Getenv("HOME") == "" {
 		os.Setenv("HOME", serve_cfg.workdir)
 	}
 }
@@ -120,10 +109,10 @@ func updatePromise(folder, root string) (libpromise.Promise, error) {
 		return nil, err
 	}
 
-	if promise, promise_present := promises[root]; promise_present {
-		return promise, nil
-	} else {
+	if promise, ok := promises[root]; !ok {
 		return nil, errors.New("root promise (" + root + ") unknown")
+	} else {
+		return promise, nil
 	}
 }
 
@@ -131,9 +120,7 @@ func checkPromise(p libpromise.Promise, logi, loge *log.Logger, args []string) {
 	vars := libpromise.Variables{}
 	vars["input_dir"] = serve_cfg.inp_dir
 	vars["work_dir"] = serve_cfg.workdir
-	exe := filepath.Clean(os.Args[0])
-	vars["executable"] = exe
-	env := []string{}
+	vars["executable"] = filepath.Clean(os.Args[0])
 
 	logger := libpromise.Logger{
 		Error:   loge,
@@ -146,9 +133,10 @@ func checkPromise(p libpromise.Promise, logi, loge *log.Logger, args []string) {
 		ExecOutput: &bytes.Buffer{},
 		Vars:       vars,
 		Args:       args,
-		Env:        env,
+		Env:        []string{},
 		Debug:      serve_cfg.debug,
-		InDir:      ""}
+		InDir:      "",
+	}
 
 	starttime := time.Now().Local()
 	promises_fullfilled := p.Eval([]libpromise.Constant{}, &ctx, "")
@@ -161,7 +149,8 @@ func checkPromise(p libpromise.Promise, logi, loge *log.Logger, args []string) {
 		loge.Printf("error during evaluation\n")
 	}
 
-	writeRunLog(promises_fullfilled, ctx.Logger.Changes, ctx.Logger.Tests, starttime, endtime, serve_cfg.runlog_path)
+	writeRunLog(promises_fullfilled, ctx.Logger.Changes,
+		ctx.Logger.Tests, starttime, endtime, serve_cfg.runlog_path)
 }
 
 func writeRunLog(success bool, changes, tests int, starttime, endtime time.Time, path string) (err error) {

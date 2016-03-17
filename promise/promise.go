@@ -1,9 +1,9 @@
 package promise
 
 import (
-	"os"
-  "log"
 	"bytes"
+	"log"
+	"os"
 )
 
 type Promise interface {
@@ -18,25 +18,20 @@ type Argument interface {
 }
 
 type Context struct {
-	Logger *Logger
+	Logger     *Logger
 	ExecOutput *bytes.Buffer
-	Vars   Variables
-	Args   []string
-	Env    []string
-	InDir  string
-	Debug  bool
+	Vars       Variables
+	Args       []string
+	Env        []string
+	InDir      string
+	Debug      bool
 }
 
 func NewContext() Context {
 	return Context{
-		Logger:  &Logger{
-			Info: log.New(os.Stdout, "llconf (info)", log.LstdFlags),
-			Error: log.New(os.Stderr, "llconf (err)", log.LstdFlags|log.Lshortfile),
-			Changes: 0,
-			Tests:  0,
-		},
-		Vars:  make(map[string]string),
-		InDir: "",
+		Logger: NewLogger(),
+		Vars:   make(map[string]string),
+		InDir:  "",
 	}
 }
 
@@ -49,8 +44,8 @@ type Logger struct {
 
 func NewLogger() *Logger {
 	return &Logger{
-		Info: log.New(os.Stdout, "llconf (info)", log.LstdFlags),
-		Error: log.New(os.Stderr, "llconf (err)", log.LstdFlags|log.Lshortfile),
+		Info:    log.New(os.Stdout, "llconf (info)", log.LstdFlags),
+		Error:   log.New(os.Stderr, "llconf (err)", log.LstdFlags|log.Lshortfile),
 		Changes: 0,
 		Tests:   0,
 	}

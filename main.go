@@ -1,54 +1,83 @@
 package main
 
 import (
-	"flag"
-	"fmt"
 	"os"
+
+	"github.com/codegangsta/cli"
+	"github.com/denkhaus/llconf/commands"
+	"github.com/sirupsen/logrus"
 )
 
-type Command struct {
-	Name      string
-	Usage     string
-	ShortHelp string
-	LongHelp  string
-	Run       func(args []string)
-	Flag      flag.FlagSet
-}
+var (
+	logger *logrus.Logger
+)
 
-var commands = []*Command{
-	eval,
-	serve,
+func init() {
+	logger = logrus.New()
+	logger.Level = logrus.DebugLevel
+	logger.Out = os.Stdout
 }
 
 func main() {
-	flag.Usage = usage
-	flag.Parse()
-	args := flag.Args()
-
-	if len(args) < 1 {
-		usage()
-		return
+	app := cli.NewApp()
+	app.Name = "llconf"
+	app.Usage = "A lisp like configuration management tool"
+	app.Flags = []cli.Flag{
+		cli.StringFlag{
+			Name:   "promise, p",
+			Usage:  "the promise that will be used as root",
+			EnvVar: "LLCONF_PROMISE",
+			Value:  "done",
+		},
 	}
 
-	for _, cmd := range commands {
-		if cmd.Name == args[0] && cmd.Run != nil {
-			cmd.Flag.Parse(args[1:])
-			cmd_args := cmd.Flag.Args()
-			cmd.Run(cmd_args)
-			os.Exit(0)
-		}
+	app.Commands = []cli.Command{
+		cli.Command{
+			Name: "eval",
+			Action: func(ctx *cli.Context) {
+				commands.Eval(ctx, logger)
+			},
+		},
+		cli.Command{
+			Name: "serve",
+			Flags: []cli.Flag{
+				cli.IntFlag{
+					Name:   "interval, n",
+					Usage:  "set the minium time between promise-tree evaluation",
+					EnvVar: "LLCONF_INTERVAL",
+					Value:  300,
+				},
+				cli.BoolFlag{
+					Name:   "verbose, v",
+					Usage:  "enable verbose output",
+					EnvVar: "LLCONF_VERBOSE",
+				},
+				cli.StringFlag{
+					Name:   "input-folder, i",
+					Usage:  "the folder containing input files",
+					EnvVar: "LLCONF_INPUT_FOLDER",
+				},
+				cli.BoolFlag{
+					Name:   "syslog, s",
+					Usage:  "output to syslog",
+					EnvVar: "LLCONF_SYSLOG",
+				},
+				cli.StringFlag{
+					Name:   "runlog, r",
+					Usage:  "path to the runlog",
+					EnvVar: "LLCONF_RUNLOG",
+				},
+				cli.BoolFlag{
+					Name:   "debug, d",
+					Usage:  "turn on debugging output",
+					EnvVar: "LLCONF_DEBUG",
+				},
+			},
+			Action: func(ctx *cli.Context) {
+				commands.Serve(ctx, logger)
+			},
+		},
 	}
 
-	fmt.Fprintf(os.Stderr, "Unknown subcommand %q\n", args[0])
-}
-
-func usage() {
-	fmt.Printf("usage: %s\n\n", os.Args[0])
-
-	for _, cmd := range commands {
-		if cmd.Usage != "" {
-			fmt.Printf("    %s\n", cmd.Usage)
-		}
-	}
-	fmt.Printf("\n")
+	app.Run(os.Args)
 }
