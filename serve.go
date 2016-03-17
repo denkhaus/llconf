@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"bytes"
-	"github.com/d3media/llconf/compiler"
-	libpromise "github.com/d3media/llconf/promise"
+	"github.com/denkhaus/llconf/compiler"
+	libpromise "github.com/denkhaus/llconf/promise"
 )
 
 var serve = &Command{

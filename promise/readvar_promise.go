@@ -37,11 +37,11 @@ func (p ReadvarPromise) New(children []Promise, args []Argument) (Promise, error
 	exec := children[0]
 	switch exec.(type) {
 	case ExecPromise:
-		promise.Exec = exec
 	case PipePromise:
+	case NamedPromise:
 		promise.Exec = exec
 	default:
-		return nil, errors.New("(readvar) did not found an exec promise")
+		return nil, errors.New("(readvar) did not found an evaluable promise")
 	}
 
 	return promise, nil

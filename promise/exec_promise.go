@@ -68,7 +68,7 @@ func (p ExecPromise) getCommand(arguments []Constant, ctx *Context) (*exec.Cmd, 
 	}
 
 	// use (in_dir) for command lookup
-	newcmd,err := exec.LookPath(ctx.InDir + "/" + cmd)
+	newcmd, err := exec.LookPath(ctx.InDir + "/" + cmd)
 	if ctx.InDir != "" {
 		if err == nil {
 			cmd = newcmd
@@ -128,13 +128,12 @@ func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 	quit := make(chan bool)
 	go func(quit chan bool) {
 		select {
-		case <- quit:
+		case <-quit:
 			return
 		case <-time.After(time.Duration(5) * time.Minute):
 			ctx.Logger.Error.Print(stack + " has been running for 5 minutes")
 		}
-	} (quit)
-
+	}(quit)
 
 	ctx.ExecOutput.Reset()
 	command.Stdout = ctx.ExecOutput
@@ -149,7 +148,7 @@ func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 		if ctx.ExecOutput.Len() > 0 {
 			ctx.Logger.Info.Print(ctx.ExecOutput.String())
 		}
-		if ! successful {
+		if !successful {
 			ctx.Logger.Info.Print(err.Error())
 		}
 	}
@@ -200,12 +199,12 @@ func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 	quit := make(chan bool)
 	go func(quit chan bool) {
 		select {
-		case <- quit:
+		case <-quit:
 			return
 		case <-time.After(time.Duration(5) * time.Minute):
 			ctx.Logger.Error.Print(stack + " has been running for 5 minutes")
 		}
-	} (quit)
+	}(quit)
 
 	commands := []*exec.Cmd{}
 	cstrings := []string{}
