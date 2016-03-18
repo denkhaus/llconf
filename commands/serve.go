@@ -160,10 +160,10 @@ func writeRunLog(success bool, changes, tests int,
 	duration := endtime.Sub(starttime)
 
 	if success {
-		output = fmt.Sprintf("successful, endtime=%d, duration=%f, c=%d, t=%d\n",
+		output = fmt.Sprintf("successful, endtime=%d, duration=%f, c=%d, t=%d",
 			endtime.Unix(), duration.Seconds(), changes, tests)
 	} else {
-		output = fmt.Sprintf("error, endtime=%d, duration=%f, c=%d, t=%d\n",
+		output = fmt.Sprintf("error, endtime=%d, duration=%f, c=%d, t=%d",
 			endtime.Unix(), duration.Seconds(), changes, tests)
 	}
 

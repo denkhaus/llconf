@@ -14,15 +14,15 @@ func TestNewFolderRuneReader(t *testing.T) {
 		t.Errorf("%v\n", err)
 	}
 
-	found_file := false
+	foundFile := false
 	filename := "io_test.go"
 	for _, v := range reader.files {
 		if v == filename {
-			found_file = true
+			foundFile = true
 		}
 	}
 
-	if !found_file {
+	if !foundFile {
 		t.Errorf("didn't found " + filename)
 	}
 

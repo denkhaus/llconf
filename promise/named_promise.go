@@ -45,5 +45,5 @@ func (p NamedPromise) Eval(arguments []Constant, ctx *Context, stack string) boo
 	copyied_ctx := *ctx
 	copyied_ctx.Vars = copyied_vars
 
-	return p.Promise.Eval(parsed_arguments, &copyied_ctx, stack + "->" + p.Name)
+	return p.Promise.Eval(parsed_arguments, &copyied_ctx, stack+"->"+p.Name)
 }

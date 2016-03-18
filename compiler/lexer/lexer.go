@@ -37,20 +37,28 @@ func (l *Lexer) run() {
 }
 
 func (l *Lexer) errorf(format string, args ...interface{}) stateFn {
-	l.tokens <- token.Token{token.Error, token.Position{
-		l.file,
-		l.line(),
-		l.start,
-		l.pos}, fmt.Sprintf(format, args...)}
+	l.tokens <- token.Token{
+		Typ: token.Error,
+		Pos: token.Position{
+			File:  l.file,
+			Line:  l.line(),
+			Start: l.start,
+			End:   l.pos},
+		Val: fmt.Sprintf(format, args...),
+	}
 	return nil
 }
 
 func (l *Lexer) emit(tt token.Type) {
-	token := token.Token{tt, token.Position{
-		l.file,
-		l.line(),
-		l.start,
-		l.pos}, l.input[l.start:l.pos]}
+	token := token.Token{
+		Typ: tt,
+		Pos: token.Position{
+			File:  l.file,
+			Line:  l.line(),
+			Start: l.start,
+			End:   l.pos},
+		Val: l.input[l.start:l.pos],
+	}
 	l.tokens <- token
 	l.start = l.pos
 }
@@ -68,7 +76,7 @@ func (l *Lexer) next() rune {
 
 func (l *Lexer) backup() rune {
 	l.pos -= l.width
-	r,w := utf8.DecodeRuneInString(l.input[l.pos:])
+	r, w := utf8.DecodeRuneInString(l.input[l.pos:])
 	l.width = w
 
 	return r
@@ -87,12 +95,12 @@ func (l *Lexer) removeLeadingWhitespace() {
 		return
 	}
 
-	r,w := utf8.DecodeRuneInString(l.input[l.pos:])
+	r, w := utf8.DecodeRuneInString(l.input[l.pos:])
 
 	for unicode.IsSpace(r) {
 		l.width = w
 		l.pos += l.width
-		r,w = utf8.DecodeRuneInString(l.input[l.pos:])
+		r, w = utf8.DecodeRuneInString(l.input[l.pos:])
 	}
 	l.start = l.pos
 }
@@ -144,7 +152,6 @@ func lexPromiseName(l *Lexer) stateFn {
 			return lexInsidePromise
 		}
 	}
-	return nil
 }
 
 func lexInsidePromise(l *Lexer) stateFn {
@@ -170,7 +177,7 @@ func lexInsidePromise(l *Lexer) stateFn {
 			return l.errorf("unexpected char inside promise: %q", r)
 		}
 	}
-	return nil
+
 }
 
 func lexPromiseClosing(l *Lexer) stateFn {
@@ -211,7 +218,6 @@ func lexArgument(l *Lexer) stateFn {
 			}
 		}
 	}
-	return nil
 }
 
 func lexInsideGetter(l *Lexer) stateFn {
@@ -235,7 +241,6 @@ func lexInsideGetter(l *Lexer) stateFn {
 			return l.errorf("unexpected char inside getter: %q", r)
 		}
 	}
-	return nil
 }
 
 func lexGetterOpening(l *Lexer) stateFn {
@@ -270,7 +275,6 @@ func lexGetterType(l *Lexer) stateFn {
 			return lexInsideGetter
 		}
 	}
-	return l.errorf("didn't found getter separator")
 }
 
 func lexGetterValue(l *Lexer) stateFn {
@@ -292,8 +296,6 @@ func lexGetterValue(l *Lexer) stateFn {
 			return l.errorf("unexpected char inside getter value: %q", r)
 		}
 	}
-
-	return l.errorf("couldn't parse getter value")
 }
 
 func lexGetterClosing(l *Lexer) stateFn {

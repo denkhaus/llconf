@@ -13,7 +13,6 @@ func TestExecPromise(t *testing.T) {
 		Constant("Hello"),
 		ArgGetter{0}}}
 
-
 	out := bytes.Buffer{}
 	ctx := NewContext()
 	ctx.ExecOutput = &out
@@ -37,7 +36,7 @@ func TestPipePromise(t *testing.T) {
 
 	var out bytes.Buffer
 	ctx := NewContext()
-	ctx.ExecOutput = &out;
+	ctx.ExecOutput = &out
 
 	res := promise.Eval([]Constant{}, &ctx, "teststack")
 	equals(t, true, res)
@@ -63,7 +62,7 @@ func TestExecReporting(t *testing.T) {
 	for _, test := range tests {
 		var out bytes.Buffer
 		ctx := NewContext()
-		ctx.ExecOutput = &out;
+		ctx.ExecOutput = &out
 
 		res := test.promise.Eval([]Constant{}, &ctx, "teststack")
 		equals(t, true, res)

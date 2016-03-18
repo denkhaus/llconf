@@ -25,8 +25,8 @@ func Compile(folder string) (map[string]promise.Promise, error) {
 			return nil, err
 		} else {
 			inputs = append(inputs, parser.Input{
-				filename,
-				string(content)})
+				File:   filename,
+				String: string(content)})
 		}
 	}
 

@@ -251,7 +251,7 @@ func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 
 	if ctx.Verbose || pipe_contains_change {
 		ctx.Logger.Info(stack)
-		ctx.Logger.Info(strings.Join(cstrings, " | ") + "\n")
+		ctx.Logger.Info(strings.Join(cstrings, " | "))
 		if ctx.ExecOutput.Len() > 0 {
 			ctx.Logger.Info(ctx.ExecOutput.String())
 		}
