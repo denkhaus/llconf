@@ -75,11 +75,11 @@ func parseArguments(ctx *cli.Context, logger *logrus.Logger) {
 
 	switch len(args) {
 	case 0:
-		logger.Fatal("no workdir specified")
+		logger.Fatal("config: no workdir specified")
 	case 1:
 		serve_cfg.workdir = args.First()
 	default:
-		logger.Fatal("argument count mismatch")
+		logger.Fatal("config: argument count mismatch")
 	}
 
 	serve_cfg.inp_dir = ctx.String("input-folder")
@@ -153,7 +153,8 @@ func checkPromise(p libpromise.Promise, logi, loge *log.Logger, args []string) {
 		ctx.Logger.Tests, starttime, endtime, serve_cfg.runlog_path)
 }
 
-func writeRunLog(success bool, changes, tests int, starttime, endtime time.Time, path string) (err error) {
+func writeRunLog(success bool, changes, tests int,
+	starttime, endtime time.Time, path string) (err error) {
 	var output string
 
 	duration := endtime.Sub(starttime)
