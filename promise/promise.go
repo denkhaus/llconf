@@ -2,8 +2,8 @@ package promise
 
 import (
 	"bytes"
-	"log"
-	"os"
+
+	"github.com/Sirupsen/logrus"
 )
 
 type Promise interface {
@@ -36,17 +36,13 @@ func NewContext() Context {
 }
 
 type Logger struct {
-	Info    *log.Logger
-	Error   *log.Logger
+	*logrus.Logger
 	Changes int
 	Tests   int
 }
 
 func NewLogger() *Logger {
-	return &Logger{
-		Info:    log.New(os.Stdout, "llconf (info)", log.LstdFlags),
-		Error:   log.New(os.Stderr, "llconf (err)", log.LstdFlags|log.Lshortfile),
-		Changes: 0,
-		Tests:   0,
-	}
+	log := Logger{}
+	log.Logger = logrus.New()
+	return &log
 }

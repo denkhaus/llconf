@@ -4,18 +4,18 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"log"
-	"log/syslog"
 	"os"
 	"path/filepath"
 	"time"
 
+	syslog "github.com/Sirupsen/logrus/hooks/syslog"
+
 	"bytes"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 	"github.com/denkhaus/llconf/compiler"
 	libpromise "github.com/denkhaus/llconf/promise"
-	"github.com/sirupsen/logrus"
 )
 
 var serve_cfg struct {
@@ -31,7 +31,10 @@ var serve_cfg struct {
 
 func Serve(ctx *cli.Context, logger *logrus.Logger) {
 	parseArguments(ctx, logger)
-	logi, loge := setupLogging()
+	logger, err := setupLogging(logger)
+	if err != nil {
+		logger.Fatal(err)
+	}
 
 	quit := make(chan int)
 	var promise_tree libpromise.Promise
@@ -49,7 +52,7 @@ func Serve(ctx *cli.Context, logger *logrus.Logger) {
 		}
 
 		if promise_tree != nil {
-			checkPromise(promise_tree, logi, loge, flag.Args())
+			checkPromise(promise_tree, logger, flag.Args())
 		} else {
 			logger.Error("could not find any valid promises")
 		}
@@ -58,16 +61,17 @@ func Serve(ctx *cli.Context, logger *logrus.Logger) {
 	}
 }
 
-func setupLogging() (logi, loge *log.Logger) {
+func setupLogging(logger *logrus.Logger) (*logrus.Logger, error) {
 	if serve_cfg.use_syslog {
-		logi, _ = syslog.NewLogger(syslog.LOG_NOTICE, log.LstdFlags)
-		loge, _ = syslog.NewLogger(syslog.LOG_ERR, log.LstdFlags)
-		return
-	} else {
-		logi = log.New(os.Stdout, "llconf (info)", log.LstdFlags)
-		loge = log.New(os.Stderr, "llconf (err)", log.LstdFlags|log.Lshortfile)
-		return
+		hook, err := syslog.NewSyslogHook("", "", syslog.LOG_INFO, "")
+		if err != nil {
+			return logger, error
+		}
+
+		logger.Hooks.Add(hook)
 	}
+
+	return logger, nil
 }
 
 func parseArguments(ctx *cli.Context, logger *logrus.Logger) {
@@ -116,17 +120,14 @@ func updatePromise(folder, root string) (libpromise.Promise, error) {
 	}
 }
 
-func checkPromise(p libpromise.Promise, logi, loge *log.Logger, args []string) {
+func checkPromise(p libpromise.Promise, logger *logrus.Logger, args []string) {
 	vars := libpromise.Variables{}
 	vars["input_dir"] = serve_cfg.inp_dir
 	vars["work_dir"] = serve_cfg.workdir
 	vars["executable"] = filepath.Clean(os.Args[0])
 
-	logger := libpromise.Logger{
-		Error:   loge,
-		Info:    logi,
-		Changes: 0,
-		Tests:   0}
+	logger := libpromise.Logger{}
+	logger.Logger = logger
 
 	ctx := libpromise.Context{
 		Logger:     &logger,

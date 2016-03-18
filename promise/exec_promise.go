@@ -116,13 +116,13 @@ func (p ExecPromise) Desc(arguments []Constant) string {
 func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool {
 	command, err := p.getCommand(arguments, ctx)
 	if err != nil {
-		ctx.Logger.Error.Print(err.Error())
+		ctx.Logger.Error(err.Error())
 		return false
 	}
 
 	if ctx.Debug || p.Type == ExecChange {
-		ctx.Logger.Info.Print(stack)
-		ctx.Logger.Info.Print("[" + p.Type.String() + "] " + strings.Join(command.Args, " ") + "\n")
+		ctx.Logger.Info(stack)
+		ctx.Logger.Info("[", p.Type.String(), "] ", strings.Join(command.Args, " "))
 	}
 
 	quit := make(chan bool)
@@ -131,7 +131,7 @@ func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 		case <-quit:
 			return
 		case <-time.After(time.Duration(5) * time.Minute):
-			ctx.Logger.Error.Print(stack + " has been running for 5 minutes")
+			ctx.Logger.Error(stack, " has been running for 5 minutes")
 		}
 	}(quit)
 
@@ -140,16 +140,15 @@ func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 	command.Stderr = ctx.ExecOutput
 
 	err = command.Run()
-
 	p.Type.IncrementExecCounter(ctx.Logger)
 
 	successful := (err == nil)
 	if ctx.Debug || p.Type == ExecChange {
 		if ctx.ExecOutput.Len() > 0 {
-			ctx.Logger.Info.Print(ctx.ExecOutput.String())
+			ctx.Logger.Info(ctx.ExecOutput.String())
 		}
 		if !successful {
-			ctx.Logger.Error.Print(err.Error())
+			ctx.Logger.Error(err.Error())
 		}
 	}
 	//non blocking send
@@ -202,7 +201,7 @@ func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 		case <-quit:
 			return
 		case <-time.After(time.Duration(5) * time.Minute):
-			ctx.Logger.Error.Print(stack + " has been running for 5 minutes")
+			ctx.Logger.Error(stack, " has been running for 5 minutes")
 		}
 	}(quit)
 
@@ -214,7 +213,7 @@ func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 	for _, v := range p.Execs {
 		cmd, err := v.getCommand(arguments, ctx)
 		if err != nil {
-			ctx.Logger.Error.Print(err.Error())
+			ctx.Logger.Error(err.Error())
 			return false
 		} else {
 			v.Type.IncrementExecCounter(ctx.Logger)
@@ -230,7 +229,7 @@ func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 	for i, command := range commands[:len(commands)-1] {
 		out, err := command.StdoutPipe()
 		if err != nil {
-			ctx.Logger.Error.Print(err.Error())
+			ctx.Logger.Error(err.Error())
 			return false
 		}
 		command.Start()
@@ -251,13 +250,13 @@ func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 	successful := (err == nil)
 
 	if ctx.Debug || pipe_contains_change {
-		ctx.Logger.Info.Print(stack)
-		ctx.Logger.Info.Print(strings.Join(cstrings, " | ") + "\n")
+		ctx.Logger.Info(stack)
+		ctx.Logger.Info(strings.Join(cstrings, " | ") + "\n")
 		if ctx.ExecOutput.Len() > 0 {
-			ctx.Logger.Info.Print(ctx.ExecOutput.String())
+			ctx.Logger.Info(ctx.ExecOutput.String())
 		}
 		if !successful {
-			ctx.Logger.Info.Print(err.Error())
+			ctx.Logger.Error(err.Error())
 		}
 	}
 

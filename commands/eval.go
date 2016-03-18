@@ -1,9 +1,9 @@
 package commands
 
 import (
+	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 	"github.com/denkhaus/llconf/compiler"
-	"github.com/sirupsen/logrus"
 )
 
 func Eval(ctx *cli.Context, logger *logrus.Logger) {
@@ -16,11 +16,11 @@ func Eval(ctx *cli.Context, logger *logrus.Logger) {
 	var input string
 	switch len(args) {
 	case 0:
-		logger.Fatal("no input folder specified")
+		logger.Fatal("config: no input folder specified")
 	case 1:
 		input = args.First()
 	default:
-		logger.Fatal("argument count mismatch")
+		logger.Fatal("config: argument count mismatch")
 	}
 
 	promises, err := compiler.Compile(input)

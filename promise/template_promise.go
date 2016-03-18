@@ -38,34 +38,30 @@ func (t TemplatePromise) Eval(arguments []Constant, ctx *Context, stack string) 
 	output := t.Output.GetValue(arguments, &ctx.Vars)
 
 	var input interface{}
-	err := json.Unmarshal([]byte(json_input), &input)
-	if err != nil {
-		ctx.Logger.Error.Print(err.Error())
+	if err := json.Unmarshal([]byte(json_input), &input); err != nil {
+		ctx.Logger.Error(err.Error())
 		return false
 	}
 
 	tmpl, err := template.ParseFiles(template_file)
 	if err != nil {
-		ctx.Logger.Error.Print(err.Error())
+		ctx.Logger.Error(err.Error())
 		return false
 	}
 
 	fo, err := os.Create(output)
 	defer fo.Close()
 	if err != nil {
-		ctx.Logger.Error.Print(err.Error())
+		ctx.Logger.Error(err.Error())
 		return false
 	}
 
 	bfo := bufio.NewWriter(fo)
-
-	err = tmpl.Execute(bfo, input)
-
-	if err != nil {
-		ctx.Logger.Error.Print(err.Error())
+	if err := tmpl.Execute(bfo, input); err != nil {
+		ctx.Logger.Error(err.Error())
 		return false
-	} else {
-		bfo.Flush()
-		return true
 	}
+
+	bfo.Flush()
+	return true
 }

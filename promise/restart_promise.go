@@ -2,13 +2,12 @@ package promise
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"syscall"
-	"path/filepath"
 )
 
 type RestartPromise struct {
@@ -38,22 +37,21 @@ func (p RestartPromise) Desc(arguments []Constant) string {
 func (p RestartPromise) Eval(arguments []Constant, ctx *Context, stack string) bool {
 	newexe := p.NewExe.GetValue(arguments, &ctx.Vars)
 	if _, err := os.Stat(newexe); err != nil {
-		ctx.Logger.Error.Print(err.Error())
+		ctx.Logger.Error(err.Error())
 		return false
 	}
 
 	exe := filepath.Clean(os.Args[0])
 
 	os.Rename(newexe, exe)
-	ctx.Logger.Info.Print(fmt.Printf("restarted llconf: llconf %v", ctx.Args))
-
-	if _, err := p.restartLLConf(exe, ctx.Args, ctx.ExecOutput, ctx.ExecOutput); err == nil {
-		os.Exit(0)
-		return true
-	} else {
-		ctx.Logger.Error.Print(err.Error())
+	ctx.Logger.Infof("restarted llconf: llconf %v", ctx.Args)
+	if _, err := p.restartLLConf(exe, ctx.Args, ctx.ExecOutput, ctx.ExecOutput); err != nil {
+		ctx.Logger.Error(err.Error())
 		return false
 	}
+
+	os.Exit(0)
+	return true
 }
 
 func (p RestartPromise) restartLLConf(exe string, args []string, stdout, stderr io.Writer) (*exec.Cmd, error) {
