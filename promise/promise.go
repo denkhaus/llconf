@@ -24,7 +24,7 @@ type Context struct {
 	Args       []string
 	Env        []string
 	InDir      string
-	Debug      bool
+	Verbose    bool
 }
 
 func NewContext() Context {

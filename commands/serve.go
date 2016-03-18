@@ -4,11 +4,12 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"log/syslog"
 	"os"
 	"path/filepath"
 	"time"
 
-	syslog "github.com/Sirupsen/logrus/hooks/syslog"
+	syslogger "github.com/Sirupsen/logrus/hooks/syslog"
 
 	"bytes"
 
@@ -26,7 +27,6 @@ var serve_cfg struct {
 	inp_dir      string
 	workdir      string
 	runlog_path  string
-	debug        bool
 }
 
 func Serve(ctx *cli.Context, logger *logrus.Logger) {
@@ -63,9 +63,9 @@ func Serve(ctx *cli.Context, logger *logrus.Logger) {
 
 func setupLogging(logger *logrus.Logger) (*logrus.Logger, error) {
 	if serve_cfg.use_syslog {
-		hook, err := syslog.NewSyslogHook("", "", syslog.LOG_INFO, "")
+		hook, err := syslogger.NewSyslogHook("", "", syslog.LOG_INFO, "")
 		if err != nil {
-			return logger, error
+			return logger, err
 		}
 
 		logger.Hooks.Add(hook)
@@ -97,9 +97,8 @@ func parseArguments(ctx *cli.Context, logger *logrus.Logger) {
 
 	serve_cfg.root_promise = ctx.GlobalString("promise")
 	serve_cfg.interval = ctx.Int("interval")
-	serve_cfg.verbose = ctx.Bool("verbose")
 	serve_cfg.use_syslog = ctx.Bool("syslog")
-	serve_cfg.debug = ctx.Bool("debug")
+	serve_cfg.verbose = ctx.Bool("verbose")
 
 	// when run as daemon, the home folder isn't set
 	if os.Getenv("HOME") == "" {
@@ -126,31 +125,31 @@ func checkPromise(p libpromise.Promise, logger *logrus.Logger, args []string) {
 	vars["work_dir"] = serve_cfg.workdir
 	vars["executable"] = filepath.Clean(os.Args[0])
 
-	logger := libpromise.Logger{}
-	logger.Logger = logger
+	log := libpromise.Logger{}
+	log.Logger = logger
 
 	ctx := libpromise.Context{
-		Logger:     &logger,
+		Logger:     &log,
 		ExecOutput: &bytes.Buffer{},
 		Vars:       vars,
 		Args:       args,
 		Env:        []string{},
-		Debug:      serve_cfg.debug,
+		Verbose:    serve_cfg.verbose,
 		InDir:      "",
 	}
 
 	starttime := time.Now().Local()
-	promises_fullfilled := p.Eval([]libpromise.Constant{}, &ctx, "")
+	fullfilled := p.Eval([]libpromise.Constant{}, &ctx, "")
 	endtime := time.Now().Local()
 
-	logi.Printf("%d changes and %d tests executed\n", ctx.Logger.Changes, ctx.Logger.Tests)
-	if promises_fullfilled {
-		logi.Printf("evaluation successful\n")
+	logger.Infof("%d changes and %d tests executed", ctx.Logger.Changes, ctx.Logger.Tests)
+	if fullfilled {
+		logger.Infof("evaluation successful")
 	} else {
-		loge.Printf("error during evaluation\n")
+		logger.Error("error during evaluation")
 	}
 
-	writeRunLog(promises_fullfilled, ctx.Logger.Changes,
+	writeRunLog(fullfilled, ctx.Logger.Changes,
 		ctx.Logger.Tests, starttime, endtime, serve_cfg.runlog_path)
 }
 
@@ -161,9 +160,11 @@ func writeRunLog(success bool, changes, tests int,
 	duration := endtime.Sub(starttime)
 
 	if success {
-		output = fmt.Sprintf("successful, endtime=%d, duration=%f, c=%d, t=%d\n", endtime.Unix(), duration.Seconds(), changes, tests)
+		output = fmt.Sprintf("successful, endtime=%d, duration=%f, c=%d, t=%d\n",
+			endtime.Unix(), duration.Seconds(), changes, tests)
 	} else {
-		output = fmt.Sprintf("error, endtime=%d, duration=%f, c=%d, t=%d\n", endtime.Unix(), duration.Seconds(), changes, tests)
+		output = fmt.Sprintf("error, endtime=%d, duration=%f, c=%d, t=%d\n",
+			endtime.Unix(), duration.Seconds(), changes, tests)
 	}
 
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)

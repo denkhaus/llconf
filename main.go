@@ -67,11 +67,6 @@ func main() {
 					Usage:  "path to the runlog",
 					EnvVar: "LLCONF_RUNLOG",
 				},
-				cli.BoolFlag{
-					Name:   "debug, d",
-					Usage:  "turn on debugging output",
-					EnvVar: "LLCONF_DEBUG",
-				},
 			},
 			Action: func(ctx *cli.Context) {
 				commands.Serve(ctx, logger)

@@ -120,7 +120,7 @@ func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 		return false
 	}
 
-	if ctx.Debug || p.Type == ExecChange {
+	if ctx.Verbose || p.Type == ExecChange {
 		ctx.Logger.Info(stack)
 		ctx.Logger.Info("[", p.Type.String(), "] ", strings.Join(command.Args, " "))
 	}
@@ -143,7 +143,7 @@ func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 	p.Type.IncrementExecCounter(ctx.Logger)
 
 	successful := (err == nil)
-	if ctx.Debug || p.Type == ExecChange {
+	if ctx.Verbose || p.Type == ExecChange {
 		if ctx.ExecOutput.Len() > 0 {
 			ctx.Logger.Info(ctx.ExecOutput.String())
 		}
@@ -249,7 +249,7 @@ func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 
 	successful := (err == nil)
 
-	if ctx.Debug || pipe_contains_change {
+	if ctx.Verbose || pipe_contains_change {
 		ctx.Logger.Info(stack)
 		ctx.Logger.Info(strings.Join(cstrings, " | ") + "\n")
 		if ctx.ExecOutput.Len() > 0 {
