@@ -5,12 +5,13 @@ import (
 	"github.com/codegangsta/cli"
 )
 
-func Eval(ctx *cli.Context, logger *logrus.Logger) {
+func Run(ctx *cli.Context, logger *logrus.Logger) {
 	rCtx := NewRunCtx(ctx, logger)
-	if _, err := rCtx.compilePromise(); err != nil {
+	tree, err := rCtx.compilePromise()
+	if err != nil {
 		rCtx.AppLogger.Error(err)
 		return
 	}
 
-	rCtx.AppLogger.Info("evaluation successful")
+	rCtx.execPromise(tree)
 }

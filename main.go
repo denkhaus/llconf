@@ -39,6 +39,29 @@ func main() {
 			},
 		},
 		cli.Command{
+			Name: "run",
+			Action: func(ctx *cli.Context) {
+				commands.Run(ctx, logger)
+			},
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:   "input-folder, i",
+					Usage:  "the folder containing input files",
+					EnvVar: "LLCONF_INPUT_FOLDER",
+				},
+				cli.BoolFlag{
+					Name:   "verbose, v",
+					Usage:  "enable verbose output",
+					EnvVar: "LLCONF_VERBOSE",
+				},
+				cli.StringFlag{
+					Name:   "runlog, r",
+					Usage:  "path to the runlog",
+					EnvVar: "LLCONF_RUNLOG",
+				},
+			},
+		},
+		cli.Command{
 			Name: "serve",
 			Flags: []cli.Flag{
 				cli.IntFlag{
