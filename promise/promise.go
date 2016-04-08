@@ -10,10 +10,13 @@ type Promise interface {
 	Desc(arguments []Constant) string
 	Eval(arguments []Constant, ctx *Context, stack string) bool
 	New(children []Promise, args []Argument) (Promise, error)
+	//Unmarshal(reader io.Reader) error
+	//Marshal(writer io.Writer) error
 }
 
 type Argument interface {
 	GetValue(arguments []Constant, vars *Variables) string
+	//	Marshal(writer io.Writer) error
 	String() string
 }
 

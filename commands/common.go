@@ -2,36 +2,71 @@ package commands
 
 import (
 	"bytes"
-	"errors"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/gob"
+	"encoding/pem"
+	"net"
+
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log/syslog"
+	"math/big"
 	"os"
+	"os/user"
+	"path"
 	"path/filepath"
 	"time"
 
 	"github.com/Sirupsen/logrus"
 	syslogger "github.com/Sirupsen/logrus/hooks/syslog"
 	"github.com/codegangsta/cli"
+
 	"github.com/denkhaus/llconf/compiler"
-	libpromise "github.com/denkhaus/llconf/promise"
+	"github.com/denkhaus/llconf/promise"
+	"github.com/denkhaus/llconf/server"
+	"github.com/docker/libchan"
+	"github.com/docker/libchan/spdy"
+	"github.com/juju/errors"
 )
 
-type RunCtx struct {
-	RootPromise string
-	Verbose     bool
-	UseSyslog   bool
-	Interval    int
-	InputDir    string
-	WorkDir     string
-	RunlogPath  string
-	AppCtx      *cli.Context
-	AppLogger   *logrus.Logger
+type SendCommand struct {
+	Data        []byte
+	Stdin       io.Writer
+	Stdout      io.Reader
+	Stderr      io.Reader
+	SendChannel libchan.Sender
 }
 
-func NewRunCtx(ctx *cli.Context, logger *logrus.Logger) *RunCtx {
+type RunCtx struct {
+	Verbose      bool
+	UseSyslog    bool
+	Interval     int
+	Port         int
+	RootPromise  string
+	InputDir     string
+	WorkDir      string
+	RunlogPath   string
+	Host         string
+	SettingsDir  string
+	CertDir      string
+	PrivKeyFile  string
+	CertFile     string
+	AppCtx       *cli.Context
+	AppLogger    *logrus.Logger
+	Sender       libchan.Sender
+	Receiver     libchan.Receiver
+	RemoteSender libchan.Sender
+}
+
+func NewRunCtx(ctx *cli.Context, logger *logrus.Logger) (*RunCtx, error) {
 	rCtx := RunCtx{AppCtx: ctx, AppLogger: logger}
-	rCtx.parseArguments()
-	return &rCtx
+	err := rCtx.parseArguments()
+	return &rCtx, err
 }
 
 func (p *RunCtx) setupLogging() error {
@@ -47,10 +82,103 @@ func (p *RunCtx) setupLogging() error {
 	return nil
 }
 
-func (p *RunCtx) compilePromise() (libpromise.Promise, error) {
+func (p *RunCtx) ensureCertificate() error {
+
+	if fileExists(p.PrivKeyFile) &&
+		fileExists(p.CertFile) {
+		return nil
+	}
+
+	p.AppLogger.Info("create certificates")
+
+	template := &x509.Certificate{
+		IsCA: true,
+		BasicConstraintsValid: true,
+		SubjectKeyId:          []byte{1, 2, 3},
+		SerialNumber:          big.NewInt(1234),
+		Subject: pkix.Name{
+			Country:      []string{"Earth"},
+			Organization: []string{"llconf"},
+		},
+		NotBefore: time.Now(),
+		NotAfter:  time.Now().AddDate(5, 5, 5),
+		// see http://golang.org/pkg/crypto/x509/#KeyUsage
+		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		KeyUsage:    x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+	}
+
+	privatekey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return errors.Annotate(err, "generate priv key")
+	}
+
+	publickey := &privatekey.PublicKey
+	cert, err := x509.CreateCertificate(rand.Reader, template,
+		template, publickey, privatekey)
+	if err != nil {
+		return errors.Annotate(err, "create certificate")
+	}
+
+	pemkey := &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(privatekey),
+	}
+
+	buf := pem.EncodeToMemory(pemkey)
+	if err := ioutil.WriteFile(p.PrivKeyFile, buf, 0644); err != nil {
+		return errors.Annotate(err, "write priv key")
+	}
+
+	pemkey = &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: cert,
+	}
+
+	buf = pem.EncodeToMemory(pemkey)
+	if err := ioutil.WriteFile(p.CertFile, buf, 0644); err != nil {
+		return errors.Annotate(err, "write cert")
+	}
+
+	return nil
+}
+
+func (p *RunCtx) createClientServer() error {
+	if err := p.ensureCertificate(); err != nil {
+		return errors.Annotate(err, "ensure certificate")
+	}
+
+	srv := server.New(p.Host, p.Port, p.PrivKeyFile, p.CertFile, p.AppLogger)
+	srv.OnPromiseReceived = p.execPromise
+	if err := srv.ListenAndRun(); err != nil {
+		return errors.Annotate(err, "server listen")
+	}
+
+	conn := net.JoinHostPort(p.Host, fmt.Sprintf("%d", p.Port))
+	client, err := tls.Dial("tcp", conn, &tls.Config{InsecureSkipVerify: true})
+	if err != nil {
+		return errors.Annotate(err, "dial")
+	}
+
+	pr, err := spdy.NewSpdyStreamProvider(client, false)
+	if err != nil {
+		return errors.Annotate(err, "new stream provider")
+	}
+
+	transport := spdy.NewTransport(pr)
+	snd, err := transport.NewSendChannel()
+	if err != nil {
+		return errors.Annotate(err, "new send channel")
+	}
+
+	p.Sender = snd
+	p.Receiver, p.RemoteSender = libchan.Pipe()
+	return nil
+}
+
+func (p *RunCtx) compilePromise() (promise.Promise, error) {
 	promises, err := compiler.Compile(p.InputDir)
 	if err != nil {
-		return nil, fmt.Errorf("parsing input folder: %v", err)
+		return nil, errors.Errorf("parsing input folder: %v", err)
 	}
 
 	tree, ok := promises[p.RootPromise]
@@ -61,7 +189,7 @@ func (p *RunCtx) compilePromise() (libpromise.Promise, error) {
 	return tree, nil
 }
 
-func (p *RunCtx) parseArguments() {
+func (p *RunCtx) parseArguments() error {
 	args := p.AppCtx.Args()
 
 	switch len(args) {
@@ -77,32 +205,84 @@ func (p *RunCtx) parseArguments() {
 	if p.InputDir == "" {
 		p.InputDir = filepath.Join(p.WorkDir, "input")
 	}
-	p.RunlogPath = p.AppCtx.String("runlog")
+	p.RunlogPath = p.AppCtx.String("runlog-path")
 	if p.RunlogPath == "" {
 		p.RunlogPath = filepath.Join(p.WorkDir, "runlog")
 	}
 
 	p.RootPromise = p.AppCtx.GlobalString("promise")
+	p.Verbose = p.AppCtx.GlobalBool("verbose")
+	p.Host = p.AppCtx.GlobalString("host")
+	p.Port = p.AppCtx.GlobalInt("port")
 	p.Interval = p.AppCtx.Int("interval")
 	p.UseSyslog = p.AppCtx.Bool("syslog")
-	p.Verbose = p.AppCtx.Bool("verbose")
+
+	usr, err := user.Current()
+	if err != nil {
+		return errors.Annotate(err, "get current user")
+	}
+
+	p.SettingsDir = path.Join(usr.HomeDir, "/.llconf")
+	if err := os.MkdirAll(p.SettingsDir, 0755); err != nil {
+		return errors.Annotate(err, "create settings dir")
+	}
+	p.CertDir = path.Join(usr.HomeDir, "/.llconf/secure")
+	if err := os.MkdirAll(p.CertDir, 0755); err != nil {
+		return errors.Annotate(err, "create cert dir")
+	}
+
+	p.PrivKeyFile = path.Join(p.CertDir, "privkey.pem")
+	p.CertFile = path.Join(p.CertDir, "cert.pem")
 
 	// when run as daemon, the home folder isn't set
 	if os.Getenv("HOME") == "" {
 		os.Setenv("HOME", p.WorkDir)
 	}
+
+	gob.Register(promise.NamedPromise{})
+	gob.Register(promise.ExecPromise{})
+	gob.Register(promise.Constant("const"))
+	return nil
 }
 
-func (p *RunCtx) execPromise(tree libpromise.Promise) {
-	vars := libpromise.Variables{}
+func (p *RunCtx) sendPromise(tree promise.Promise) error {
+	cmd := SendCommand{
+		Stdin:       os.Stdin,
+		Stdout:      os.Stdout,
+		Stderr:      os.Stderr,
+		SendChannel: p.RemoteSender,
+	}
+
+	buf := bytes.Buffer{}
+	enc := gob.NewEncoder(&buf)
+	if err := enc.Encode(tree); err != nil {
+		return errors.Annotate(err, "encode")
+	}
+
+	cmd.Data = buf.Bytes()
+	if err := p.Sender.Send(&cmd); err != nil {
+		return errors.Annotate(err, "send")
+	}
+
+	resp := &server.CommandResponse{}
+	if err := p.Receiver.Receive(&resp); err != nil {
+		return errors.Annotate(err, "receive")
+	}
+
+	p.AppLogger.Info(resp.Error)
+	return nil
+}
+
+func (p *RunCtx) execPromise(tree promise.Promise) {
+	vars := promise.Variables{}
 	vars["input_dir"] = p.InputDir
 	vars["work_dir"] = p.WorkDir
 	vars["executable"] = filepath.Clean(os.Args[0])
 
-	log := libpromise.Logger{}
+	log := promise.Logger{}
 	log.Logger = p.AppLogger
 
-	ctx := libpromise.Context{
+	ctx := promise.Context{
 		Logger:     &log,
 		ExecOutput: &bytes.Buffer{},
 		Vars:       vars,
@@ -113,7 +293,7 @@ func (p *RunCtx) execPromise(tree libpromise.Promise) {
 	}
 
 	starttime := time.Now().Local()
-	fullfilled := tree.Eval([]libpromise.Constant{}, &ctx, "")
+	fullfilled := tree.Eval([]promise.Constant{}, &ctx, "")
 	endtime := time.Now().Local()
 
 	p.AppLogger.Infof("%d changes and %d tests executed", ctx.Logger.Changes, ctx.Logger.Tests)
@@ -154,4 +334,12 @@ func writeRunLog(success bool, changes, tests int,
 
 	err = f.Close()
 	return
+}
+
+func fileExists(filePath string) bool {
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return false
+	}
+
+	return true
 }

@@ -1,26 +1,24 @@
 package promise
 
-import (
-	"fmt"
-)
+import "fmt"
 
 type SetEnv struct {
-	name  Argument
-	value Argument
-	child Promise
+	Name  Argument
+	Value Argument
+	Child Promise
 }
 
 func (s SetEnv) Desc(arguments []Constant) string {
-	return fmt.Sprintf("(setenv %s %s)", s.name, s.child.Desc(arguments))
+	return fmt.Sprintf("(setenv %s %s)", s.Name, s.Child.Desc(arguments))
 }
 
 func (s SetEnv) Eval(arguments []Constant, ctx *Context, stack string) bool {
-	name := s.name.GetValue(arguments, &ctx.Vars)
-	value := s.value.GetValue(arguments, &ctx.Vars)
+	name := s.Name.GetValue(arguments, &ctx.Vars)
+	value := s.Value.GetValue(arguments, &ctx.Vars)
 
 	copyied_ctx := *ctx
 	copyied_ctx.Env = append(copyied_ctx.Env, fmt.Sprintf("%s=%s", name, value))
-	return s.child.Eval(arguments, &copyied_ctx, stack)
+	return s.Child.Eval(arguments, &copyied_ctx, stack)
 }
 
 func (s SetEnv) New(children []Promise, args []Argument) (Promise, error) {
@@ -34,3 +32,16 @@ func (s SetEnv) New(children []Promise, args []Argument) (Promise, error) {
 
 	return SetEnv{args[0], args[1], children[0]}, nil
 }
+
+//func (p SetEnv) Marshal(writer io.Writer) error {
+//	if err := p.Name.Marshal(writer); err != nil {
+//		return err
+//	}
+//	if err := p.Value.Marshal(writer); err != nil {
+//		return err
+//	}
+//	if err := p.Child.Marshal(writer); err != nil {
+//		return err
+//	}
+//	return nil
+//}

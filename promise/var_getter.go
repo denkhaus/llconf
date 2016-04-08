@@ -1,5 +1,10 @@
 package promise
 
+import (
+	"fmt"
+	"io"
+)
+
 type Variables map[string]string
 
 type VarGetter struct {
@@ -16,4 +21,12 @@ func (getter VarGetter) GetValue(arguments []Constant, vars *Variables) string {
 	} else {
 		return "missing"
 	}
+}
+
+func (p VarGetter) Marshal(writer io.Writer) error {
+	if _, err := fmt.Fprintln(writer, p.Name); err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -35,3 +35,13 @@ func (p OrPromise) Eval(arguments []Constant, ctx *Context, stack string) bool {
 	}
 	return false
 }
+
+//func (p OrPromise) Marshal(writer io.Writer) error {
+//	for _, pr := range p.Promises {
+//		if err := pr.Marshal(writer); err != nil {
+//			return err
+//		}
+//	}
+
+//	return nil
+//}

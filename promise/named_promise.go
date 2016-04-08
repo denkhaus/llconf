@@ -47,3 +47,19 @@ func (p NamedPromise) Eval(arguments []Constant, ctx *Context, stack string) boo
 
 	return p.Promise.Eval(parsed_arguments, &copyied_ctx, stack+"->"+p.Name)
 }
+
+//func (p NamedPromise) Marshal(writer io.Writer) error {
+//	if _, err := fmt.Fprintln(writer, p.Name); err != nil {
+//		return err
+//	}
+//	if err := p.Promise.Marshal(writer); err != nil {
+//		return err
+//	}
+//	for _, arg := range p.Arguments {
+//		if err := arg.Marshal(writer); err != nil {
+//			return err
+//		}
+//	}
+
+//	return nil
+//}

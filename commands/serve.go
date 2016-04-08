@@ -9,7 +9,10 @@ import (
 )
 
 func Serve(ctx *cli.Context, logger *logrus.Logger) {
-	rCtx := NewRunCtx(ctx, logger)
+	rCtx, err := NewRunCtx(ctx, logger)
+	if err != nil {
+		rCtx.AppLogger.Fatal(err)
+	}
 	if err := rCtx.setupLogging(); err != nil {
 		rCtx.AppLogger.Fatal(err)
 	}

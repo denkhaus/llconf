@@ -65,3 +65,16 @@ func (t TemplatePromise) Eval(arguments []Constant, ctx *Context, stack string) 
 	bfo.Flush()
 	return true
 }
+
+//func (p TemplatePromise) Marshal(writer io.Writer) error {
+//	if err := p.JsonInput.Marshal(writer); err != nil {
+//		return err
+//	}
+//	if err := p.TemplateFile.Marshal(writer); err != nil {
+//		return err
+//	}
+//	if err := p.Output.Marshal(writer); err != nil {
+//		return err
+//	}
+//	return nil
+//}

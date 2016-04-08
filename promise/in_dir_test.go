@@ -12,7 +12,7 @@ func TestNew(t *testing.T) {
 		t.Errorf("indir TestNew: %s", e.Error())
 	} else {
 
-		if p.(InDir).promise == nil {
+		if p.(InDir).Promise == nil {
 			t.Errorf("indir.TestNew: promise is not set properly")
 		}
 	}

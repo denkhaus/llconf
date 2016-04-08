@@ -38,3 +38,13 @@ func (p SetvarPromise) Eval(arguments []Constant, ctx *Context, stack string) bo
 func (p SetvarPromise) Desc(arguments []Constant) string {
 	return "(setvar \"" + p.VarName.String() + "\" " + p.VarValue.String() + " )"
 }
+
+//func (p SetvarPromise) Marshal(writer io.Writer) error {
+//	if err := p.VarName.Marshal(writer); err != nil {
+//		return err
+//	}
+//	if err := p.VarValue.Marshal(writer); err != nil {
+//		return err
+//	}
+//	return nil
+//}

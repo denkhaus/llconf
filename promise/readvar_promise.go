@@ -65,3 +65,14 @@ func (p ReadvarPromise) Eval(arguments []Constant, ctx *Context, stack string) b
 
 	return result
 }
+
+//func (p ReadvarPromise) Marshal(writer io.Writer) error {
+//	if err := p.VarName.Marshal(writer); err != nil {
+//		return err
+//	}
+//	if err := p.Exec.Marshal(writer); err != nil {
+//		return err
+//	}
+
+//	return nil
+//}

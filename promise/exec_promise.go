@@ -1,11 +1,15 @@
 package promise
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/juju/errors"
 )
 
 type ExecType int
@@ -113,8 +117,36 @@ func (p ExecPromise) Desc(arguments []Constant) string {
 	return "(" + p.Type.Name() + " <" + cmd + " [" + strings.Join(args, ", ") + "] >)"
 }
 
+func (p ExecPromise) processOutput(ctx *Context, cmd *exec.Cmd) error {
+	ctx.ExecOutput.Reset()
+	commonWriter := bufio.NewWriter(ctx.ExecOutput)
+
+	process := func(reader io.Reader, fn func(string)) {
+		scn := bufio.NewScanner(reader)
+		for scn.Scan() {
+			commonWriter.WriteString(scn.Text())
+			if ctx.Verbose || p.Type == ExecChange {
+				fn(scn.Text())
+			}
+		}
+	}
+
+	outReader, err := cmd.StdoutPipe()
+	if err != nil {
+		return errors.Annotate(err, "get stdout pipe")
+	}
+	errReader, err := cmd.StderrPipe()
+	if err != nil {
+		return errors.Annotate(err, "get stderr pipe")
+	}
+
+	go process(outReader, func(out string) { ctx.Logger.Info(out) })
+	go process(errReader, func(out string) { ctx.Logger.Error(out) })
+	return nil
+}
+
 func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool {
-	command, err := p.getCommand(arguments, ctx)
+	cmd, err := p.getCommand(arguments, ctx)
 	if err != nil {
 		ctx.Logger.Error(err.Error())
 		return false
@@ -122,7 +154,7 @@ func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 
 	if ctx.Verbose || p.Type == ExecChange {
 		ctx.Logger.Info(stack)
-		ctx.Logger.Info("[", p.Type.String(), "] ", strings.Join(command.Args, " "))
+		ctx.Logger.Info("[", p.Type.String(), "] ", strings.Join(cmd.Args, " "))
 	}
 
 	quit := make(chan bool)
@@ -135,28 +167,23 @@ func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 		}
 	}(quit)
 
-	ctx.ExecOutput.Reset()
-	command.Stdout = ctx.ExecOutput
-	command.Stderr = ctx.ExecOutput
+	defer func() { quit <- true }()
 
-	err = command.Run()
+	if err := p.processOutput(ctx, cmd); err != nil {
+		ctx.Logger.Error(fmt.Errorf("process output: %v", err))
+		return false
+	}
+	if err = cmd.Start(); err != nil {
+		ctx.Logger.Error(fmt.Errorf("cmd start: %v", err))
+		return false
+	}
+	if err = cmd.Wait(); err != nil {
+		ctx.Logger.Error(fmt.Errorf("cmd wait: %v", err))
+		return false
+	}
+
 	p.Type.IncrementExecCounter(ctx.Logger)
-
-	successful := (err == nil)
-	if ctx.Verbose || p.Type == ExecChange {
-		if ctx.ExecOutput.Len() > 0 {
-			ctx.Logger.Info(ctx.ExecOutput.String())
-		}
-		if !successful {
-			ctx.Logger.Error(err.Error())
-		}
-	}
-	//non blocking send
-	select {
-	case quit <- true:
-	default:
-	}
-	return successful
+	return true
 }
 
 /////////////////////////////

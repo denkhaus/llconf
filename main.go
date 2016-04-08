@@ -21,13 +21,30 @@ func init() {
 func main() {
 	app := cli.NewApp()
 	app.Name = "llconf"
-	app.Usage = "A lisp like configuration management tool"
+	app.Usage = "A batch execution tool for remote or local use."
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
+			Name:   "host, H",
+			Usage:  "the host the promise is executed on",
+			EnvVar: "LLCONF_HOST",
+			Value:  "localhost",
+		},
+		cli.IntFlag{
+			Name:   "port, P",
+			Usage:  "the port used for communication",
+			EnvVar: "LLCONF_PORT",
+			Value:  9954,
+		},
+		cli.StringFlag{
 			Name:   "promise, p",
-			Usage:  "the promise that will be used as root",
+			Usage:  "the root promise name",
 			EnvVar: "LLCONF_PROMISE",
 			Value:  "done",
+		},
+		cli.BoolFlag{
+			Name:   "verbose",
+			Usage:  "enable verbose output",
+			EnvVar: "LLCONF_VERBOSE",
 		},
 	}
 
@@ -49,13 +66,8 @@ func main() {
 					Usage:  "the folder containing input files",
 					EnvVar: "LLCONF_INPUT_FOLDER",
 				},
-				cli.BoolFlag{
-					Name:   "verbose, v",
-					Usage:  "enable verbose output",
-					EnvVar: "LLCONF_VERBOSE",
-				},
 				cli.StringFlag{
-					Name:   "runlog, r",
+					Name:   "runlog-path, r",
 					Usage:  "path to the runlog",
 					EnvVar: "LLCONF_RUNLOG",
 				},
@@ -70,11 +82,6 @@ func main() {
 					EnvVar: "LLCONF_INTERVAL",
 					Value:  300,
 				},
-				cli.BoolFlag{
-					Name:   "verbose, v",
-					Usage:  "enable verbose output",
-					EnvVar: "LLCONF_VERBOSE",
-				},
 				cli.StringFlag{
 					Name:   "input-folder, i",
 					Usage:  "the folder containing input files",
@@ -86,7 +93,7 @@ func main() {
 					EnvVar: "LLCONF_SYSLOG",
 				},
 				cli.StringFlag{
-					Name:   "runlog, r",
+					Name:   "runlog-path, r",
 					Usage:  "path to the runlog",
 					EnvVar: "LLCONF_RUNLOG",
 				},

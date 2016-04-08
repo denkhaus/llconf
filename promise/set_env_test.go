@@ -17,7 +17,7 @@ func TestSetEnvNew(t *testing.T) {
 	if err != nil {
 		t.Errorf("(setenv) TestNew: %s", err.Error())
 	} else {
-		if d.(SetEnv).name != name {
+		if d.(SetEnv).Name != name {
 			t.Errorf("(setenv) TestNew: env name not set")
 		}
 	}

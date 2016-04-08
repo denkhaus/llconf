@@ -6,12 +6,20 @@ import (
 )
 
 func Run(ctx *cli.Context, logger *logrus.Logger) {
-	rCtx := NewRunCtx(ctx, logger)
-	tree, err := rCtx.compilePromise()
+	rCtx, err := NewRunCtx(ctx, logger)
 	if err != nil {
-		rCtx.AppLogger.Error(err)
-		return
+		rCtx.AppLogger.Fatal(err)
+	}
+	if err := rCtx.createClientServer(); err != nil {
+		rCtx.AppLogger.Fatal(err)
 	}
 
-	rCtx.execPromise(tree)
+	tree, err := rCtx.compilePromise()
+	if err != nil {
+		rCtx.AppLogger.Fatal(err)
+	}
+
+	if err := rCtx.sendPromise(tree); err != nil {
+		rCtx.AppLogger.Fatal(err)
+	}
 }
