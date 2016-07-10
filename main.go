@@ -49,32 +49,16 @@ func main() {
 	}
 
 	app.Commands = []cli.Command{
+		commands.NewServeCommand(logger),
 		cli.Command{
 			Name: "eval",
 			Action: func(ctx *cli.Context) {
 				commands.Eval(ctx, logger)
 			},
 		},
+
 		cli.Command{
-			Name: "run",
-			Action: func(ctx *cli.Context) {
-				commands.Run(ctx, logger)
-			},
-			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:   "input-folder, i",
-					Usage:  "the folder containing input files",
-					EnvVar: "LLCONF_INPUT_FOLDER",
-				},
-				cli.StringFlag{
-					Name:   "runlog-path, r",
-					Usage:  "path to the runlog",
-					EnvVar: "LLCONF_RUNLOG",
-				},
-			},
-		},
-		cli.Command{
-			Name: "serve",
+			Name: "watch",
 			Flags: []cli.Flag{
 				cli.IntFlag{
 					Name:   "interval, n",
@@ -99,7 +83,7 @@ func main() {
 				},
 			},
 			Action: func(ctx *cli.Context) {
-				commands.Serve(ctx, logger)
+				commands.Watch(ctx, logger)
 			},
 		},
 	}

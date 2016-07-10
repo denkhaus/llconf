@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/tls"
 	"encoding/gob"
@@ -89,27 +90,27 @@ func (p *Server) ListenAndRun() error {
 	return nil
 }
 
-//func (p *Server) redirectOutput(cmd *RemoteCommand, ch chan bool) error {
-//	process := func(reader io.Reader, writer io.Writer) {
-//		scn := bufio.NewScanner(reader)
-//		for scn.Scan() {
-//			//select {
-//			//case <-ch:
-//			//	p.Logger.Info("46")
-//			//	return
-//			//default:
-//			//}
-//			//p.Logger.Info("4")
-//			//if  {
-//			fmt.Fprintf(writer, "remote: %s", scn.Text())
-//			//}
-//		}
-//	}
+func (p *Server) redirectOutput(cmd *RemoteCommand, ch chan bool) error {
+	process := func(reader io.Reader, writer io.Writer) {
+		scn := bufio.NewScanner(reader)
+		for scn.Scan() {
+			//select {
+			//case <-ch:
+			//	p.Logger.Info("46")
+			//	return
+			//default:
+			//}
+			//p.Logger.Info("4")
+			//if  {
+			fmt.Fprintf(writer, "remote: %s", scn.Text())
+			//}
+		}
+	}
 
-//	go process(os.Stdout, cmd.Stdout)
-//	go process(os.Stderr, cmd.Stderr)
-//	return nil
-//}
+	go process(os.Stdout, cmd.Stdout)
+	go process(os.Stderr, cmd.Stderr)
+	return nil
+}
 
 func (p *Server) receiveLoop(receiver libchan.Receiver) error {
 	for {
@@ -160,7 +161,7 @@ func (p *Server) receive(t libchan.Transport) error {
 	return nil
 }
 
-func (p *Server) run() {
+func (p *Server) run() error {
 	p.Logger.Info("start server")
 
 	process := func() error {
@@ -184,9 +185,5 @@ func (p *Server) run() {
 		}
 	}
 
-	go func() {
-		if err := process(); err != nil {
-			p.Logger.Fatalf("server: run ended with error: %v", err)
-		}
-	}()
+	return process()
 }
