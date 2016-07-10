@@ -18,6 +18,7 @@ import (
 	"github.com/docker/libchan/spdy"
 )
 
+//////////////////////////////////////////////////////////////////////////////////
 type RemoteCommand struct {
 	Data        []byte
 	Stdin       io.Reader
@@ -26,10 +27,12 @@ type RemoteCommand struct {
 	SendChannel libchan.Sender
 }
 
+//////////////////////////////////////////////////////////////////////////////////
 type CommandResponse struct {
 	Error error
 }
 
+//////////////////////////////////////////////////////////////////////////////////
 type Server struct {
 	listener          net.Listener
 	Host              string
@@ -37,9 +40,10 @@ type Server struct {
 	CertFile          string
 	KeyFile           string
 	Logger            *logrus.Logger
-	OnPromiseReceived func(promise.Promise)
+	OnPromiseReceived func(promise.Promise) error
 }
 
+//////////////////////////////////////////////////////////////////////////////////
 func New(host string, port int, keyFile, certFile string, logger *logrus.Logger) *Server {
 	serv := Server{
 		Host:     host,
@@ -52,7 +56,8 @@ func New(host string, port int, keyFile, certFile string, logger *logrus.Logger)
 	return &serv
 }
 
-func (p *Server) ensureValidCert() (*tls.Certificate, error) {
+//////////////////////////////////////////////////////////////////////////////////
+func (p *Server) loadCertificate() (*tls.Certificate, error) {
 	if _, err := os.Stat(p.CertFile); os.IsNotExist(err) {
 		return nil, errors.New("tls cert file not found")
 	}
@@ -67,10 +72,11 @@ func (p *Server) ensureValidCert() (*tls.Certificate, error) {
 	return &tlsCert, nil
 }
 
+//////////////////////////////////////////////////////////////////////////////////
 func (p *Server) ListenAndRun() error {
-	tlsCert, err := p.ensureValidCert()
+	tlsCert, err := p.loadCertificate()
 	if err != nil {
-		return errors.Annotate(err, "ensure cert")
+		return errors.Annotate(err, "load certificate")
 	}
 
 	tlsConfig := &tls.Config{
@@ -78,8 +84,8 @@ func (p *Server) ListenAndRun() error {
 		Certificates:       []tls.Certificate{*tlsCert},
 	}
 
-	conn := net.JoinHostPort(p.Host, p.Port)
-	list, err := tls.Listen("tcp", conn, tlsConfig)
+	hostPort := net.JoinHostPort(p.Host, p.Port)
+	list, err := tls.Listen("tcp", hostPort, tlsConfig)
 	if err != nil {
 		return errors.Annotate(err, "listen")
 	}
@@ -90,28 +96,28 @@ func (p *Server) ListenAndRun() error {
 	return nil
 }
 
-func (p *Server) redirectOutput(cmd *RemoteCommand, ch chan bool) error {
+//////////////////////////////////////////////////////////////////////////////////
+func (p *Server) redirectOutput(cmd *RemoteCommand, ch chan bool) {
 	process := func(reader io.Reader, writer io.Writer) {
 		scn := bufio.NewScanner(reader)
 		for scn.Scan() {
-			//select {
-			//case <-ch:
-			//	p.Logger.Info("46")
-			//	return
-			//default:
-			//}
-			//p.Logger.Info("4")
-			//if  {
 			fmt.Fprintf(writer, "remote: %s", scn.Text())
-			//}
+
+			select {
+			case <-ch:
+				p.Logger.Info("redirect finished")
+				return
+			default:
+				p.Logger.Info("4")
+			}
 		}
 	}
 
 	go process(os.Stdout, cmd.Stdout)
 	go process(os.Stderr, cmd.Stderr)
-	return nil
 }
 
+//////////////////////////////////////////////////////////////////////////////////
 func (p *Server) receiveLoop(receiver libchan.Receiver) error {
 	for {
 
@@ -128,22 +134,22 @@ func (p *Server) receiveLoop(receiver libchan.Receiver) error {
 		}
 
 		ch := make(chan bool)
-		if err := p.redirectOutput(&cmd, ch); err != nil {
-			return errors.Annotate(err, "redirect output")
-		}
+		p.redirectOutput(&cmd, ch)
 
-		p.OnPromiseReceived(pr)
+		if err := p.OnPromiseReceived(pr); err != nil {
+			return errors.Annotate(err, "on promise received")
+		}
 
 		res := CommandResponse{}
 		if err := cmd.SendChannel.Send(&res); err != nil {
 			return errors.Annotate(err, "send")
 		}
 
-		//ch <- true
-		//ch <- true
+		ch <- true
 	}
 }
 
+//////////////////////////////////////////////////////////////////////////////////
 func (p *Server) receive(t libchan.Transport) error {
 	for {
 		receiver, err := t.WaitReceiveChannel()
@@ -161,6 +167,7 @@ func (p *Server) receive(t libchan.Transport) error {
 	return nil
 }
 
+//////////////////////////////////////////////////////////////////////////////////
 func (p *Server) run() error {
 	p.Logger.Info("start server")
 

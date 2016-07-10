@@ -34,6 +34,7 @@ import (
 	"github.com/juju/errors"
 )
 
+//////////////////////////////////////////////////////////////////////////////////
 type SendCommand struct {
 	Data        []byte
 	Stdin       io.Writer
@@ -42,6 +43,7 @@ type SendCommand struct {
 	SendChannel libchan.Sender
 }
 
+//////////////////////////////////////////////////////////////////////////////////
 type RunCtx struct {
 	Verbose      bool
 	UseSyslog    bool
@@ -63,12 +65,14 @@ type RunCtx struct {
 	RemoteSender libchan.Sender
 }
 
-func NewRunCtx(ctx *cli.Context, logger *logrus.Logger) (*RunCtx, error) {
+//////////////////////////////////////////////////////////////////////////////////
+func NewRunCtx(ctx *cli.Context, logger *logrus.Logger, isClient bool) (*RunCtx, error) {
 	rCtx := RunCtx{AppCtx: ctx, AppLogger: logger}
-	err := rCtx.parseArguments()
+	err := rCtx.parseArguments(isClient)
 	return &rCtx, err
 }
 
+//////////////////////////////////////////////////////////////////////////////////
 func (p *RunCtx) setupLogging() error {
 	if p.UseSyslog {
 		hook, err := syslogger.NewSyslogHook("", "", syslog.LOG_INFO, "")
@@ -82,8 +86,8 @@ func (p *RunCtx) setupLogging() error {
 	return nil
 }
 
+//////////////////////////////////////////////////////////////////////////////////
 func (p *RunCtx) ensureCertificate() error {
-
 	if fileExists(p.PrivKeyFile) &&
 		fileExists(p.CertFile) {
 		return nil
@@ -142,7 +146,8 @@ func (p *RunCtx) ensureCertificate() error {
 	return nil
 }
 
-func (p *RunCtx) createClientServer() error {
+//////////////////////////////////////////////////////////////////////////////////
+func (p *RunCtx) createServer() error {
 	if err := p.ensureCertificate(); err != nil {
 		return errors.Annotate(err, "ensure certificate")
 	}
@@ -153,8 +158,13 @@ func (p *RunCtx) createClientServer() error {
 		return errors.Annotate(err, "server listen")
 	}
 
-	conn := net.JoinHostPort(p.Host, fmt.Sprintf("%d", p.Port))
-	client, err := tls.Dial("tcp", conn, &tls.Config{InsecureSkipVerify: true})
+	return nil
+}
+
+//////////////////////////////////////////////////////////////////////////////////
+func (p *RunCtx) createClient() error {
+	hostPort := net.JoinHostPort(p.Host, fmt.Sprintf("%d", p.Port))
+	client, err := tls.Dial("tcp", hostPort, &tls.Config{InsecureSkipVerify: true})
 	if err != nil {
 		return errors.Annotate(err, "dial")
 	}
@@ -175,10 +185,11 @@ func (p *RunCtx) createClientServer() error {
 	return nil
 }
 
+//////////////////////////////////////////////////////////////////////////////////
 func (p *RunCtx) compilePromise() (promise.Promise, error) {
 	promises, err := compiler.Compile(p.InputDir)
 	if err != nil {
-		return nil, errors.Errorf("parsing input folder: %v", err)
+		return nil, errors.Annotate(err, "compile promise")
 	}
 
 	tree, ok := promises[p.RootPromise]
@@ -189,22 +200,25 @@ func (p *RunCtx) compilePromise() (promise.Promise, error) {
 	return tree, nil
 }
 
-func (p *RunCtx) parseArguments() error {
-	args := p.AppCtx.Args()
+//////////////////////////////////////////////////////////////////////////////////
+func (p *RunCtx) parseArguments(isClient bool) error {
 
-	switch len(args) {
-	case 0:
-		p.AppLogger.Fatal("config: no workdir specified")
-	case 1:
-		p.WorkDir = args.First()
-	default:
-		p.AppLogger.Fatal("config: argument count mismatch")
+	wd, err := os.Getwd()
+	if err != nil {
+		return errors.Annotate(err, "get wd")
+	}
+	p.WorkDir = wd
+
+	if isClient {
+		p.InputDir = p.AppCtx.String("input-folder")
+		if p.InputDir == "" {
+			p.InputDir = filepath.Join(p.WorkDir, "input")
+		}
+		if err := os.MkdirAll(p.InputDir, 0755); err != nil {
+			return errors.Annotate(err, "create input dir")
+		}
 	}
 
-	p.InputDir = p.AppCtx.String("input-folder")
-	if p.InputDir == "" {
-		p.InputDir = filepath.Join(p.WorkDir, "input")
-	}
 	p.RunlogPath = p.AppCtx.String("runlog-path")
 	if p.RunlogPath == "" {
 		p.RunlogPath = filepath.Join(p.WorkDir, "runlog")
@@ -226,6 +240,7 @@ func (p *RunCtx) parseArguments() error {
 	if err := os.MkdirAll(p.SettingsDir, 0755); err != nil {
 		return errors.Annotate(err, "create settings dir")
 	}
+
 	p.CertDir = path.Join(usr.HomeDir, "/.llconf/secure")
 	if err := os.MkdirAll(p.CertDir, 0755); err != nil {
 		return errors.Annotate(err, "create cert dir")
@@ -245,6 +260,7 @@ func (p *RunCtx) parseArguments() error {
 	return nil
 }
 
+//////////////////////////////////////////////////////////////////////////////////
 func (p *RunCtx) sendPromise(tree promise.Promise) error {
 	cmd := SendCommand{
 		Stdin:       os.Stdin,
@@ -269,11 +285,11 @@ func (p *RunCtx) sendPromise(tree promise.Promise) error {
 		return errors.Annotate(err, "receive")
 	}
 
-	p.AppLogger.Info(resp.Error)
-	return nil
+	return resp.Error
 }
 
-func (p *RunCtx) execPromise(tree promise.Promise) {
+//////////////////////////////////////////////////////////////////////////////////
+func (p *RunCtx) execPromise(tree promise.Promise) error {
 	vars := promise.Variables{}
 	vars["input_dir"] = p.InputDir
 	vars["work_dir"] = p.WorkDir
@@ -305,8 +321,11 @@ func (p *RunCtx) execPromise(tree promise.Promise) {
 
 	writeRunLog(fullfilled, ctx.Logger.Changes,
 		ctx.Logger.Tests, starttime, endtime, p.RunlogPath)
+
+	return nil
 }
 
+//////////////////////////////////////////////////////////////////////////////////
 func writeRunLog(success bool, changes, tests int,
 	starttime, endtime time.Time, path string) (err error) {
 	var output string
@@ -336,6 +355,7 @@ func writeRunLog(success bool, changes, tests int,
 	return
 }
 
+//////////////////////////////////////////////////////////////////////////////////
 func fileExists(filePath string) bool {
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		return false

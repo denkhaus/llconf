@@ -3,6 +3,7 @@ package commands
 import (
 	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
+	"github.com/juju/errors"
 )
 
 func NewServeCommand(logger *logrus.Logger) cli.Command {
@@ -22,11 +23,16 @@ func NewServeCommand(logger *logrus.Logger) cli.Command {
 			},
 		},
 		Action: func(ctx *cli.Context) error {
-			rCtx, err := NewRunCtx(ctx, logger)
+			rCtx, err := NewRunCtx(ctx, logger, false)
 			if err != nil {
-				rCtx.AppLogger.Fatal(err)
+				return errors.Annotate(err, "new run context")
 			}
-			return rCtx.createClientServer()
+
+			if err := rCtx.createServer(); err != nil {
+				return errors.Annotate(err, "create server")
+			}
+
+			return nil
 		},
 	}
 }

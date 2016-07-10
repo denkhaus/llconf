@@ -5,39 +5,68 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
-	libpromise "github.com/denkhaus/llconf/promise"
+	"github.com/juju/errors"
 )
 
-func Watch(ctx *cli.Context, logger *logrus.Logger) {
-	rCtx, err := NewRunCtx(ctx, logger)
-	if err != nil {
-		rCtx.AppLogger.Fatal(err)
-	}
-	if err := rCtx.setupLogging(); err != nil {
-		rCtx.AppLogger.Fatal(err)
-	}
+func NewWatchCommand(logger *logrus.Logger) cli.Command {
+	return cli.Command{
+		Name: "watch",
+		Flags: []cli.Flag{
+			cli.IntFlag{
+				Name:   "interval, n",
+				Usage:  "set the minium time between promise-tree evaluation",
+				EnvVar: "LLCONF_INTERVAL",
+				Value:  300,
+			},
+			cli.StringFlag{
+				Name:   "input-folder, i",
+				Usage:  "the folder containing input files",
+				EnvVar: "LLCONF_INPUT_FOLDER",
+			},
+			cli.BoolFlag{
+				Name:   "syslog, s",
+				Usage:  "output to syslog",
+				EnvVar: "LLCONF_SYSLOG",
+			},
+			cli.StringFlag{
+				Name:   "runlog-path, r",
+				Usage:  "path to the runlog",
+				EnvVar: "LLCONF_RUNLOG",
+			},
+		},
+		Action: func(ctx *cli.Context) error {
+			rCtx, err := NewRunCtx(ctx, logger, true)
+			if err != nil {
+				return errors.Annotate(err, "new run context")
+			}
+			if err := rCtx.setupLogging(); err != nil {
+				return errors.Annotate(err, "setup logging")
+			}
 
-	quit := make(chan int)
-	var tree libpromise.Promise
+			quit := make(chan int)
 
-	for {
-		go func(q chan int) {
-			time.Sleep(time.Duration(rCtx.Interval) * time.Second)
-			q <- 0
-		}(quit)
+			for {
+				go func(q chan int) {
+					time.Sleep(time.Duration(rCtx.Interval) * time.Second)
+					q <- 0
+				}(quit)
 
-		if npt, err := rCtx.compilePromise(); err != nil {
-			rCtx.AppLogger.Error(err)
-		} else {
-			tree = npt
-		}
+				tree, err := rCtx.compilePromise()
+				if err != nil {
+					return errors.Annotate(err, "compile promise")
+				}
 
-		if tree != nil {
-			rCtx.execPromise(tree)
-		} else {
-			rCtx.AppLogger.Error("could not find any valid promises")
-		}
+				if tree == nil {
+					return errors.New("could not find any valid promises")
+				}
 
-		<-quit
+				if err := rCtx.execPromise(tree); err != nil {
+					return errors.Annotate(err, "exec promise")
+				}
+
+				<-quit
+			}
+			return nil
+		},
 	}
 }

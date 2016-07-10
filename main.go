@@ -50,42 +50,8 @@ func main() {
 
 	app.Commands = []cli.Command{
 		commands.NewServeCommand(logger),
-		cli.Command{
-			Name: "eval",
-			Action: func(ctx *cli.Context) {
-				commands.Eval(ctx, logger)
-			},
-		},
-
-		cli.Command{
-			Name: "watch",
-			Flags: []cli.Flag{
-				cli.IntFlag{
-					Name:   "interval, n",
-					Usage:  "set the minium time between promise-tree evaluation",
-					EnvVar: "LLCONF_INTERVAL",
-					Value:  300,
-				},
-				cli.StringFlag{
-					Name:   "input-folder, i",
-					Usage:  "the folder containing input files",
-					EnvVar: "LLCONF_INPUT_FOLDER",
-				},
-				cli.BoolFlag{
-					Name:   "syslog, s",
-					Usage:  "output to syslog",
-					EnvVar: "LLCONF_SYSLOG",
-				},
-				cli.StringFlag{
-					Name:   "runlog-path, r",
-					Usage:  "path to the runlog",
-					EnvVar: "LLCONF_RUNLOG",
-				},
-			},
-			Action: func(ctx *cli.Context) {
-				commands.Watch(ctx, logger)
-			},
-		},
+		commands.NewTestCommand(logger),
+		commands.NewWatchCommand(logger),
 	}
 
 	app.Run(os.Args)
