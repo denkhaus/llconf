@@ -49,6 +49,7 @@ func main() {
 	}
 
 	app.Commands = []cli.Command{
+		commands.NewRunCommand(logger),
 		commands.NewServeCommand(logger),
 		commands.NewTestCommand(logger),
 		commands.NewWatchCommand(logger),
