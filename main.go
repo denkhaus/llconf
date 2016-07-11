@@ -1,10 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/codegangsta/cli"
 	"github.com/denkhaus/llconf/cmd"
+	"github.com/juju/errors"
 )
 
 func main() {
@@ -44,5 +46,9 @@ func main() {
 		cmd.NewWatchCommand(),
 	}
 
-	app.Run(os.Args)
+	if err := app.Run(os.Args); err != nil {
+		fmt.Printf("execution error: %s\n",
+			errors.ErrorStack(err))
+		os.Exit(1)
+	}
 }

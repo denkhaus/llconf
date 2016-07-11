@@ -93,45 +93,49 @@ func (p *Server) ListenAndRun() error {
 }
 
 //////////////////////////////////////////////////////////////////////////////////
-func (p *Server) redirectOutput(writer io.Writer, fn func()) {
+func (p *Server) redirectOutput(writer io.Writer, fn func() error) error {
+	defer logging.SetOutWriter(os.Stdout)
 	logging.SetOutWriter(writer)
-	defer func() {
-		logging.SetOutWriter(os.Stdout)
-	}()
-	fn()
+	return fn()
 }
 
 //////////////////////////////////////////////////////////////////////////////////
 func (p *Server) receiveLoop(receiver libchan.Receiver) error {
 	for {
 
-		cmd := make(map[string]interface{})
+		cmd := RemoteCommand{}
 		if err := receiver.Receive(&cmd); err != nil {
 			return errors.Annotate(err, "receive")
 		}
-		fmt.Print("lulu")
+
 		logging.Logger.Info("promise received")
 
 		pr := promise.NamedPromise{}
-		enc := gob.NewDecoder(bytes.NewBuffer(cmd["data"].([]byte)))
+		enc := gob.NewDecoder(bytes.NewBuffer(cmd.Data))
 		if err := enc.Decode(&pr); err != nil {
 			return errors.Annotate(err, "decode")
 		}
 
 		res := CommandResponse{}
-		p.redirectOutput(cmd["stdout"].(io.WriteCloser), func() {
+		err := p.redirectOutput(cmd.Stdout, func() error {
 			if err := p.OnPromiseReceived(pr); err != nil {
 				res.Error = errors.Annotate(err, "on promise received")
 				res.Status = "Execution Error"
-				logging.Logger.Error(err)
+				return err
 			} else {
 				res.Status = "Execution successfull"
-				logging.Logger.Infof(res.Status)
+				return nil
 			}
 		})
 
+		if err != nil {
+			logging.Logger.Error(err)
+		} else {
+			logging.Logger.Infof(res.Status)
+		}
+
 		logging.Logger.Info("send answer")
-		if err := cmd["sendch"].(libchan.Sender).Send(&res); err != nil {
+		if err := cmd.SendChannel.Send(&res); err != nil {
 			return errors.Annotate(err, "send")
 		}
 	}

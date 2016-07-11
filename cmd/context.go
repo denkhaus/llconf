@@ -269,19 +269,19 @@ func (p *RunCtx) sendPromise(tree promise.Promise) error {
 		return errors.Annotate(err, "encode")
 	}
 
-	cmd := map[string]interface{}{
-		"data": buf.Bytes(),
-		//	"stdout": os.Stdout,
-		"sendch": p.RemoteSender,
+	cmd := RemoteCommand{
+		Data:        buf.Bytes(),
+		Stdout:      os.Stdout,
+		SendChannel: p.RemoteSender,
 	}
 
 	if err := p.Sender.Send(cmd); err != nil {
 		return errors.Annotate(err, "send")
 	}
 
-	//	if err := p.Sender.Close(); err != nil {
-	//		return errors.Annotate(err, "close sender channel")
-	//	}
+	if err := p.Sender.Close(); err != nil {
+		return errors.Annotate(err, "close sender channel")
+	}
 
 	resp := server.CommandResponse{}
 	if err := p.Receiver.Receive(&resp); err != nil {
