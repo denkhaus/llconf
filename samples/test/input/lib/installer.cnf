@@ -1,0 +1,9 @@
+(installed
+    (or
+        (pipe
+            (test"dpkg-query" "-W" "--showformat='${Status}\n'" [arg:0])
+            (test "grep" "install ok installed")
+        )
+        (change "sudo" "apt-get" "--force-yes" "--yes" "install" [arg:0])
+    )
+)
