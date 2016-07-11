@@ -1,18 +1,18 @@
 package promise
 
-import "fmt"
+import "github.com/juju/errors"
 
 type OrPromise struct {
 	Promises []Promise
 }
 
 func (p OrPromise) New(children []Promise, args []Argument) (Promise, error) {
-	if len(children) == 0 {
-		return nil, fmt.Errorf("(and) needs at least 1 nested promise")
+	if len(children) < 2 {
+		return nil, errors.New("(or) needs at least 2 nested promises")
 	}
 
 	if len(args) != 0 {
-		return nil, fmt.Errorf("string args are not allowed in (and) promises")
+		return nil, errors.New("string args are not allowed in (or) promises")
 	}
 
 	return OrPromise{children}, nil
@@ -26,22 +26,11 @@ func (p OrPromise) Desc(arguments []Constant) string {
 	return "(or" + promises + ")"
 }
 
-func (p OrPromise) Eval(arguments []Constant, ctx *Context, stack string) bool {
+func (p OrPromise) Eval(arguments []Constant, ctx *Context, stack string) error {
 	for _, v := range p.Promises {
-		r := v.Eval(arguments, ctx, stack)
-		if r == true {
-			return true
+		if err := v.Eval(arguments, ctx, stack); err == nil {
+			return err
 		}
 	}
-	return false
+	return errors.New("or not fulfilled")
 }
-
-//func (p OrPromise) Marshal(writer io.Writer) error {
-//	for _, pr := range p.Promises {
-//		if err := pr.Marshal(writer); err != nil {
-//			return err
-//		}
-//	}
-
-//	return nil
-//}

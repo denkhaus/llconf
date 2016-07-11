@@ -3,20 +3,9 @@ package main
 import (
 	"os"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
-	"github.com/denkhaus/llconf/commands"
+	"github.com/denkhaus/llconf/cmd"
 )
-
-var (
-	logger *logrus.Logger
-)
-
-func init() {
-	logger = logrus.New()
-	logger.Level = logrus.DebugLevel
-	logger.Out = os.Stdout
-}
 
 func main() {
 	app := cli.NewApp()
@@ -49,10 +38,10 @@ func main() {
 	}
 
 	app.Commands = []cli.Command{
-		commands.NewRunCommand(logger),
-		commands.NewServeCommand(logger),
-		commands.NewTestCommand(logger),
-		commands.NewWatchCommand(logger),
+		cmd.NewRunCommand(),
+		cmd.NewServeCommand(),
+		cmd.NewTestCommand(),
+		cmd.NewWatchCommand(),
 	}
 
 	app.Run(os.Args)

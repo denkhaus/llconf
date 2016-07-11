@@ -1,13 +1,15 @@
 package promise
 
 import (
-	"errors"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"syscall"
+
+	"github.com/denkhaus/llconf/logging"
+	"github.com/juju/errors"
 )
 
 type RestartPromise struct {
@@ -34,24 +36,22 @@ func (p RestartPromise) Desc(arguments []Constant) string {
 	return "(restart " + strings.Join(args, ", ") + ")"
 }
 
-func (p RestartPromise) Eval(arguments []Constant, ctx *Context, stack string) bool {
+func (p RestartPromise) Eval(arguments []Constant, ctx *Context, stack string) error {
 	newexe := p.NewExe.GetValue(arguments, &ctx.Vars)
 	if _, err := os.Stat(newexe); err != nil {
-		ctx.Logger.Error(err.Error())
-		return false
+		return errors.Annotate(err, "stat")
 	}
 
 	exe := filepath.Clean(os.Args[0])
 
 	os.Rename(newexe, exe)
-	ctx.Logger.Infof("restarted llconf: llconf %v", ctx.Args)
+	logging.Logger.Infof("restarted llconf: llconf %v", ctx.Args)
 	if _, err := p.restartLLConf(exe, ctx.Args, ctx.ExecOutput, ctx.ExecOutput); err != nil {
-		ctx.Logger.Error(err.Error())
-		return false
+		return errors.Annotate(err, "restart llconf")
 	}
 
 	os.Exit(0)
-	return true
+	return nil
 }
 
 func (p RestartPromise) restartLLConf(exe string, args []string, stdout, stderr io.Writer) (*exec.Cmd, error) {

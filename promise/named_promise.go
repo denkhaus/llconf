@@ -31,7 +31,7 @@ func (p NamedPromise) Desc(arguments []Constant) string {
 	return fmt.Sprintf("(%s %s)", p.Name, p.Promise.Desc(parsed_arguments))
 }
 
-func (p NamedPromise) Eval(arguments []Constant, ctx *Context, stack string) bool {
+func (p NamedPromise) Eval(arguments []Constant, ctx *Context, stack string) error {
 	parsed_arguments := []Constant{}
 	for _, argument := range p.Arguments {
 		parsed_arguments = append(parsed_arguments, Constant(argument.GetValue(arguments, &ctx.Vars)))
@@ -47,19 +47,3 @@ func (p NamedPromise) Eval(arguments []Constant, ctx *Context, stack string) boo
 
 	return p.Promise.Eval(parsed_arguments, &copyied_ctx, stack+"->"+p.Name)
 }
-
-//func (p NamedPromise) Marshal(writer io.Writer) error {
-//	if _, err := fmt.Fprintln(writer, p.Name); err != nil {
-//		return err
-//	}
-//	if err := p.Promise.Marshal(writer); err != nil {
-//		return err
-//	}
-//	for _, arg := range p.Arguments {
-//		if err := arg.Marshal(writer); err != nil {
-//			return err
-//		}
-//	}
-
-//	return nil
-//}

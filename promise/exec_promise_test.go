@@ -66,6 +66,6 @@ func TestExecReporting(t *testing.T) {
 
 		res := test.promise.Eval([]Constant{}, &ctx, "teststack")
 		equals(t, true, res)
-		equals(t, strconv.Itoa(test.changes), strconv.Itoa(ctx.Logger.Changes))
+		equals(t, strconv.Itoa(test.changes), strconv.Itoa(logging.Logger.Changes))
 	}
 }

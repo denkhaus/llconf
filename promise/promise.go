@@ -1,27 +1,19 @@
 package promise
 
-import (
-	"bytes"
-
-	"github.com/Sirupsen/logrus"
-)
+import "bytes"
 
 type Promise interface {
 	Desc(arguments []Constant) string
-	Eval(arguments []Constant, ctx *Context, stack string) bool
+	Eval(arguments []Constant, ctx *Context, stack string) error
 	New(children []Promise, args []Argument) (Promise, error)
-	//Unmarshal(reader io.Reader) error
-	//Marshal(writer io.Writer) error
 }
 
 type Argument interface {
 	GetValue(arguments []Constant, vars *Variables) string
-	//	Marshal(writer io.Writer) error
 	String() string
 }
 
 type Context struct {
-	Logger     *Logger
 	ExecOutput *bytes.Buffer
 	Vars       Variables
 	Args       []string
@@ -32,20 +24,7 @@ type Context struct {
 
 func NewContext() Context {
 	return Context{
-		Logger: NewLogger(),
-		Vars:   make(map[string]string),
-		InDir:  "",
+		Vars:  make(map[string]string),
+		InDir: "",
 	}
-}
-
-type Logger struct {
-	*logrus.Logger
-	Changes int
-	Tests   int
-}
-
-func NewLogger() *Logger {
-	log := Logger{}
-	log.Logger = logrus.New()
-	return &log
 }

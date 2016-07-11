@@ -9,10 +9,9 @@ import (
 	"net"
 	"os"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/denkhaus/llconf/logging"
 	"github.com/juju/errors"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/denkhaus/llconf/promise"
 	"github.com/docker/libchan"
 	"github.com/docker/libchan/spdy"
@@ -21,9 +20,7 @@ import (
 //////////////////////////////////////////////////////////////////////////////////
 type RemoteCommand struct {
 	Data        []byte
-	Stdin       io.Reader
 	Stdout      io.WriteCloser
-	Stderr      io.WriteCloser
 	SendChannel libchan.Sender
 }
 
@@ -40,18 +37,16 @@ type Server struct {
 	Port              string
 	CertFile          string
 	KeyFile           string
-	Logger            *logrus.Logger
 	OnPromiseReceived func(promise.Promise) error
 }
 
 //////////////////////////////////////////////////////////////////////////////////
-func New(host string, port int, keyFile, certFile string, logger *logrus.Logger) *Server {
+func New(host string, port int, keyFile, certFile string) *Server {
 	serv := Server{
 		Host:     host,
 		Port:     fmt.Sprintf("%d", port),
 		KeyFile:  keyFile,
 		CertFile: certFile,
-		Logger:   logger,
 	}
 
 	return &serv
@@ -91,7 +86,7 @@ func (p *Server) ListenAndRun() error {
 		return errors.Annotate(err, "listen")
 	}
 
-	p.Logger.Infof("listening on %s", hostPort)
+	logging.Logger.Infof("listening on %s", hostPort)
 
 	p.listener = list
 	return p.run()
@@ -99,9 +94,9 @@ func (p *Server) ListenAndRun() error {
 
 //////////////////////////////////////////////////////////////////////////////////
 func (p *Server) redirectOutput(writer io.Writer, fn func()) {
-	p.Logger.Out = writer
+	logging.SetOutWriter(writer)
 	defer func() {
-		p.Logger.Out = os.Stdout
+		logging.SetOutWriter(os.Stdout)
 	}()
 	fn()
 }
@@ -110,32 +105,33 @@ func (p *Server) redirectOutput(writer io.Writer, fn func()) {
 func (p *Server) receiveLoop(receiver libchan.Receiver) error {
 	for {
 
-		cmd := RemoteCommand{}
-		err := receiver.Receive(&cmd)
-		if err != nil {
+		cmd := make(map[string]interface{})
+		if err := receiver.Receive(&cmd); err != nil {
 			return errors.Annotate(err, "receive")
 		}
-
-		p.Logger.Info("promise received")
+		fmt.Print("lulu")
+		logging.Logger.Info("promise received")
 
 		pr := promise.NamedPromise{}
-		enc := gob.NewDecoder(bytes.NewBuffer(cmd.Data))
+		enc := gob.NewDecoder(bytes.NewBuffer(cmd["data"].([]byte)))
 		if err := enc.Decode(&pr); err != nil {
 			return errors.Annotate(err, "decode")
 		}
 
 		res := CommandResponse{}
-		p.redirectOutput(cmd.Stdout, func() {
+		p.redirectOutput(cmd["stdout"].(io.WriteCloser), func() {
 			if err := p.OnPromiseReceived(pr); err != nil {
 				res.Error = errors.Annotate(err, "on promise received")
 				res.Status = "Execution Error"
+				logging.Logger.Error(err)
 			} else {
 				res.Status = "Execution successfull"
+				logging.Logger.Infof(res.Status)
 			}
 		})
 
-		p.Logger.Info("send answer")
-		if err := cmd.SendChannel.Send(&res); err != nil {
+		logging.Logger.Info("send answer")
+		if err := cmd["sendch"].(libchan.Sender).Send(&res); err != nil {
 			return errors.Annotate(err, "send")
 		}
 	}
@@ -144,8 +140,6 @@ func (p *Server) receiveLoop(receiver libchan.Receiver) error {
 //////////////////////////////////////////////////////////////////////////////////
 func (p *Server) receive(t libchan.Transport) error {
 	for {
-		p.Logger.Info("server: wait for message")
-
 		receiver, err := t.WaitReceiveChannel()
 		if err != nil {
 			return errors.Annotate(err, "wait receive channel")
@@ -153,11 +147,8 @@ func (p *Server) receive(t libchan.Transport) error {
 
 		go func() {
 			if err := p.receiveLoop(receiver); err != nil {
-				spew.Dump(err)
-				if err != io.EOF {
-					p.Logger.Errorf("server: receive loop ended with error: %v",
-						errors.ErrorStack(err))
-				}
+				logging.Logger.Errorf("server: receive loop ended with error: %v",
+					errors.ErrorStack(err))
 			}
 		}()
 	}
@@ -167,9 +158,10 @@ func (p *Server) receive(t libchan.Transport) error {
 
 //////////////////////////////////////////////////////////////////////////////////
 func (p *Server) run() error {
-
 	process := func() error {
 		for {
+			logging.Logger.Info("server: wait for input")
+
 			c, err := p.listener.Accept()
 			if err != nil {
 				return errors.Annotate(err, "accept")
@@ -183,7 +175,7 @@ func (p *Server) run() error {
 				t := spdy.NewTransport(pr)
 				if err := p.receive(t); err != nil {
 					pr.Close()
-					p.Logger.Fatalf("server: receive ended with error: %v", err)
+					logging.Logger.Fatalf("server: receive ended with error: %v", err)
 				}
 			}()
 		}

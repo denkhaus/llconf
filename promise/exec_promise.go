@@ -2,13 +2,13 @@ package promise
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
 
+	"github.com/denkhaus/llconf/logging"
 	"github.com/juju/errors"
 )
 
@@ -30,13 +30,13 @@ func (t ExecType) Name() string {
 	}
 }
 
-func (t ExecType) IncrementExecCounter(logger *Logger) {
+func (t ExecType) IncrementExecCounter() {
 	if t == ExecChange {
-		logger.Changes++
+		logging.Logger.Changes++
 	}
 
 	if t == ExecTest {
-		logger.Tests++
+		logging.Logger.Tests++
 	}
 }
 
@@ -51,11 +51,11 @@ type ExecPromise struct {
 
 func (p ExecPromise) New(children []Promise, args []Argument) (Promise, error) {
 	if len(children) != 0 {
-		return nil, fmt.Errorf("nested promises not allowed in (%s)", p.Type.Name())
+		return nil, errors.Errorf("nested promises not allowed in (%s)", p.Type.Name())
 	}
 
 	if len(args) == 0 {
-		return nil, fmt.Errorf("(%s) needs at least 1 string argument", p.Type.Name())
+		return nil, errors.Errorf("(%s) needs at least 1 string argument", p.Type.Name())
 	}
 
 	return ExecPromise{Type: p.Type, Arguments: args}, nil
@@ -83,10 +83,10 @@ func (p ExecPromise) getCommand(arguments []Constant, ctx *Context) (*exec.Cmd, 
 	if ctx.InDir != "" {
 		fs, err := os.Stat(ctx.InDir)
 		if err != nil {
-			return nil, fmt.Errorf("(indir) error: %s", err.Error())
+			return nil, errors.Errorf("(indir) error: %s", err.Error())
 		}
 		if !fs.IsDir() {
-			return nil, fmt.Errorf("(indir) not a directory: %s", ctx.InDir)
+			return nil, errors.Errorf("(indir) not a directory: %s", ctx.InDir)
 		}
 		command.Dir = ctx.InDir
 	} else {
@@ -140,21 +140,20 @@ func (p ExecPromise) processOutput(ctx *Context, cmd *exec.Cmd) error {
 		return errors.Annotate(err, "get stderr pipe")
 	}
 
-	go process(outReader, func(out string) { ctx.Logger.Info(out) })
-	go process(errReader, func(out string) { ctx.Logger.Error(out) })
+	go process(outReader, func(out string) { logging.Logger.Info(out) })
+	go process(errReader, func(out string) { logging.Logger.Error(out) })
 	return nil
 }
 
-func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool {
+func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) error {
 	cmd, err := p.getCommand(arguments, ctx)
 	if err != nil {
-		ctx.Logger.Error(err.Error())
-		return false
+		return errors.Annotate(err, "get command")
 	}
 
 	if ctx.Verbose || p.Type == ExecChange {
-		ctx.Logger.Info(stack)
-		ctx.Logger.Info("[", p.Type.String(), "] ", strings.Join(cmd.Args, " "))
+		logging.Logger.Info(stack)
+		logging.Logger.Info("[", p.Type.String(), "] ", strings.Join(cmd.Args, " "))
 	}
 
 	quit := make(chan bool)
@@ -163,27 +162,24 @@ func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 		case <-quit:
 			return
 		case <-time.After(time.Duration(5) * time.Minute):
-			ctx.Logger.Error(stack, " has been running for 5 minutes")
+			logging.Logger.Error(stack, " has been running for 5 minutes")
 		}
 	}(quit)
 
 	defer func() { quit <- true }()
 
 	if err := p.processOutput(ctx, cmd); err != nil {
-		ctx.Logger.Error(fmt.Errorf("process output: %v", err))
-		return false
+		return errors.Annotate(err, "process output")
 	}
 	if err = cmd.Start(); err != nil {
-		ctx.Logger.Error(fmt.Errorf("cmd start: %v", err))
-		return false
+		return errors.Annotate(err, "cmd start")
 	}
 	if err = cmd.Wait(); err != nil {
-		ctx.Logger.Error(fmt.Errorf("cmd wait: %v", err))
-		return false
+		return errors.Annotate(err, "cmd wait")
 	}
 
-	p.Type.IncrementExecCounter(ctx.Logger)
-	return true
+	p.Type.IncrementExecCounter()
+	return nil
 }
 
 /////////////////////////////
@@ -195,7 +191,7 @@ type PipePromise struct {
 func (p PipePromise) New(children []Promise, args []Argument) (Promise, error) {
 
 	if len(args) != 0 {
-		return nil, fmt.Errorf("string arguments not allowed in (pipe) promise")
+		return nil, errors.New("string arguments not allowed in (pipe) promise")
 	}
 
 	execs := []ExecPromise{}
@@ -205,7 +201,7 @@ func (p PipePromise) New(children []Promise, args []Argument) (Promise, error) {
 		case ExecPromise:
 			execs = append(execs, t)
 		default:
-			return nil, fmt.Errorf("only (test) or (change) promises allowed inside (pipe) promise")
+			return nil, errors.New("only (test) or (change) promises allowed inside (pipe) promise")
 		}
 	}
 
@@ -220,15 +216,17 @@ func (p PipePromise) Desc(arguments []Constant) string {
 	return retval + ")"
 }
 
-func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) bool {
+func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) error {
 
 	quit := make(chan bool)
+	defer func() { quit <- true }()
+
 	go func(quit chan bool) {
 		select {
 		case <-quit:
 			return
 		case <-time.After(time.Duration(5) * time.Minute):
-			ctx.Logger.Error(stack, " has been running for 5 minutes")
+			logging.Logger.Error(stack, " has been running for 5 minutes")
 		}
 	}(quit)
 
@@ -240,10 +238,9 @@ func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 	for _, v := range p.Execs {
 		cmd, err := v.getCommand(arguments, ctx)
 		if err != nil {
-			ctx.Logger.Error(err.Error())
-			return false
+			return errors.Annotate(err, "get command")
 		} else {
-			v.Type.IncrementExecCounter(ctx.Logger)
+			v.Type.IncrementExecCounter()
 		}
 		cstrings = append(cstrings, "["+v.Type.String()+"] "+strings.Join(cmd.Args, " "))
 		commands = append(commands, cmd)
@@ -256,8 +253,7 @@ func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 	for i, command := range commands[:len(commands)-1] {
 		out, err := command.StdoutPipe()
 		if err != nil {
-			ctx.Logger.Error(err.Error())
-			return false
+			return errors.Annotate(err, "stdout pipe")
 		}
 		command.Start()
 		commands[i+1].Stdin = out
@@ -274,23 +270,12 @@ func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 		command.Wait()
 	}
 
-	successful := (err == nil)
-
 	if ctx.Verbose || pipe_contains_change {
-		ctx.Logger.Info(stack)
-		ctx.Logger.Info(strings.Join(cstrings, " | "))
+		logging.Logger.Info(stack)
+		logging.Logger.Info(strings.Join(cstrings, " | "))
 		if ctx.ExecOutput.Len() > 0 {
-			ctx.Logger.Info(ctx.ExecOutput.String())
-		}
-		if !successful {
-			ctx.Logger.Error(err.Error())
+			logging.Logger.Info(ctx.ExecOutput.String())
 		}
 	}
-
-	//non blocking send
-	select {
-	case quit <- true:
-	default:
-	}
-	return successful
+	return err
 }

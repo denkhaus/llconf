@@ -1,4 +1,4 @@
-package commands
+package cmd
 
 import (
 	"bytes"
@@ -22,11 +22,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	syslogger "github.com/Sirupsen/logrus/hooks/syslog"
 	"github.com/codegangsta/cli"
-
 	"github.com/denkhaus/llconf/compiler"
+	"github.com/denkhaus/llconf/logging"
 	"github.com/denkhaus/llconf/promise"
 	"github.com/denkhaus/llconf/server"
 	"github.com/docker/libchan"
@@ -37,9 +36,7 @@ import (
 //////////////////////////////////////////////////////////////////////////////////
 type RemoteCommand struct {
 	Data        []byte
-	Stdin       io.Writer
 	Stdout      io.Reader
-	Stderr      io.Reader
 	SendChannel libchan.Sender
 }
 
@@ -59,15 +56,14 @@ type RunCtx struct {
 	PrivKeyFile  string
 	CertFile     string
 	AppCtx       *cli.Context
-	AppLogger    *logrus.Logger
 	Sender       libchan.Sender
 	Receiver     libchan.Receiver
 	RemoteSender libchan.Sender
 }
 
 //////////////////////////////////////////////////////////////////////////////////
-func NewRunCtx(ctx *cli.Context, logger *logrus.Logger, isClient bool) (*RunCtx, error) {
-	rCtx := RunCtx{AppCtx: ctx, AppLogger: logger}
+func NewRunCtx(ctx *cli.Context, isClient bool) (*RunCtx, error) {
+	rCtx := RunCtx{AppCtx: ctx}
 	err := rCtx.parseArguments(isClient)
 	return &rCtx, err
 }
@@ -80,7 +76,7 @@ func (p *RunCtx) setupLogging() error {
 			return err
 		}
 
-		p.AppLogger.Hooks.Add(hook)
+		logging.Logger.Hooks.Add(hook)
 	}
 
 	return nil
@@ -93,7 +89,7 @@ func (p *RunCtx) ensureCertificate() error {
 		return nil
 	}
 
-	p.AppLogger.Info("create certificates")
+	logging.Logger.Info("create certificates")
 
 	template := &x509.Certificate{
 		IsCA: true,
@@ -152,7 +148,7 @@ func (p *RunCtx) createServer() error {
 		return errors.Annotate(err, "ensure certificate")
 	}
 
-	srv := server.New(p.Host, p.Port, p.PrivKeyFile, p.CertFile, p.AppLogger)
+	srv := server.New(p.Host, p.Port, p.PrivKeyFile, p.CertFile)
 	srv.OnPromiseReceived = p.execPromise
 
 	if err := srv.ListenAndRun(); err != nil {
@@ -266,12 +262,6 @@ func (p *RunCtx) parseArguments(isClient bool) error {
 
 //////////////////////////////////////////////////////////////////////////////////
 func (p *RunCtx) sendPromise(tree promise.Promise) error {
-	cmd := RemoteCommand{
-		Stdin:       os.Stdin,
-		Stdout:      os.Stdout,
-		Stderr:      os.Stderr,
-		SendChannel: p.RemoteSender,
-	}
 
 	buf := bytes.Buffer{}
 	enc := gob.NewEncoder(&buf)
@@ -279,20 +269,26 @@ func (p *RunCtx) sendPromise(tree promise.Promise) error {
 		return errors.Annotate(err, "encode")
 	}
 
-	cmd.Data = buf.Bytes()
-	if err := p.Sender.Send(&cmd); err != nil {
+	cmd := map[string]interface{}{
+		"data": buf.Bytes(),
+		//	"stdout": os.Stdout,
+		"sendch": p.RemoteSender,
+	}
+
+	if err := p.Sender.Send(cmd); err != nil {
 		return errors.Annotate(err, "send")
 	}
-	if err := p.Sender.Close(); err != nil {
-		return errors.Annotate(err, "close sender channel")
-	}
+
+	//	if err := p.Sender.Close(); err != nil {
+	//		return errors.Annotate(err, "close sender channel")
+	//	}
 
 	resp := server.CommandResponse{}
 	if err := p.Receiver.Receive(&resp); err != nil {
 		return errors.Annotate(err, "receive")
 	}
 
-	p.AppLogger.Info(resp.Status)
+	logging.Logger.Info(resp.Status)
 	return resp.Error
 }
 
@@ -303,11 +299,7 @@ func (p *RunCtx) execPromise(tree promise.Promise) error {
 	vars["work_dir"] = p.WorkDir
 	vars["executable"] = filepath.Clean(os.Args[0])
 
-	log := promise.Logger{}
-	log.Logger = p.AppLogger
-
 	ctx := promise.Context{
-		Logger:     &log,
 		ExecOutput: &bytes.Buffer{},
 		Vars:       vars,
 		Args:       p.AppCtx.Args(),
@@ -317,50 +309,47 @@ func (p *RunCtx) execPromise(tree promise.Promise) error {
 	}
 
 	starttime := time.Now().Local()
-	fullfilled := tree.Eval([]promise.Constant{}, &ctx, "")
+	err := tree.Eval([]promise.Constant{}, &ctx, "")
 	endtime := time.Now().Local()
 
-	p.AppLogger.Infof("%d changes and %d tests executed", ctx.Logger.Changes, ctx.Logger.Tests)
-	if fullfilled {
-		ctx.Logger.Infof("evaluation successful")
-	} else {
-		ctx.Logger.Error("error during evaluation")
-	}
+	defer logging.Logger.Reset()
+	logging.Logger.Infof("%d changes and %d tests executed in %s",
+		logging.Logger.Changes, logging.Logger.Tests, endtime.Sub(starttime))
 
-	writeRunLog(fullfilled, ctx.Logger.Changes,
-		ctx.Logger.Tests, starttime, endtime, p.RunlogPath)
+	writeRunLog(err, starttime, endtime, p.RunlogPath)
 
-	return nil
+	return err
 }
 
 //////////////////////////////////////////////////////////////////////////////////
-func writeRunLog(success bool, changes, tests int,
-	starttime, endtime time.Time, path string) (err error) {
+func writeRunLog(err error, starttime, endtime time.Time, path string) error {
 	var output string
 
+	changes := logging.Logger.Changes
+	tests := logging.Logger.Tests
 	duration := endtime.Sub(starttime)
 
-	if success {
-		output = fmt.Sprintf("successful, endtime=%d, duration=%f, c=%d, t=%d",
-			endtime.Unix(), duration.Seconds(), changes, tests)
+	if err != nil {
+		output = fmt.Sprintf("error, endtime=%d, duration=%f, c=%d, t=%d -> %s",
+			endtime.Unix(), duration.Seconds(), changes, tests, err)
 	} else {
-		output = fmt.Sprintf("error, endtime=%d, duration=%f, c=%d, t=%d",
+		output = fmt.Sprintf("successful, endtime=%d, duration=%f, c=%d, t=%d",
 			endtime.Unix(), duration.Seconds(), changes, tests)
 	}
 
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
-		return
+		return errors.Annotate(err, "open file")
 	}
 
-	data := []byte(output)
-	n, err := f.Write(data)
-	if err == nil && n < len(data) {
-		return
+	defer f.Close()
+
+	_, err = f.Write([]byte(output))
+	if err != nil {
+		return errors.Annotate(err, "write")
 	}
 
-	err = f.Close()
-	return
+	return nil
 }
 
 //////////////////////////////////////////////////////////////////////////////////

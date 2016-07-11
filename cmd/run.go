@@ -1,12 +1,11 @@
-package commands
+package cmd
 
 import (
-	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 	"github.com/juju/errors"
 )
 
-func NewRunCommand(logger *logrus.Logger) cli.Command {
+func NewRunCommand() cli.Command {
 
 	return cli.Command{
 		Name: "run",
@@ -23,7 +22,7 @@ func NewRunCommand(logger *logrus.Logger) cli.Command {
 			},
 		},
 		Action: func(ctx *cli.Context) error {
-			rCtx, err := NewRunCtx(ctx, logger, true)
+			rCtx, err := NewRunCtx(ctx, true)
 			if err != nil {
 				return errors.Annotate(err, "new run context")
 			}

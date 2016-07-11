@@ -3,11 +3,12 @@ package promise
 import (
 	"bufio"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
 	"text/template"
+
+	"github.com/juju/errors"
 )
 
 type TemplatePromise struct {
@@ -31,7 +32,7 @@ func (t TemplatePromise) Desc(arguments []Constant) string {
 		t.Output)
 }
 
-func (t TemplatePromise) Eval(arguments []Constant, ctx *Context, stack string) bool {
+func (t TemplatePromise) Eval(arguments []Constant, ctx *Context, stack string) error {
 	replacer := strings.NewReplacer("'", "\"")
 	json_input := replacer.Replace(t.JsonInput.GetValue(arguments, &ctx.Vars))
 	template_file := t.TemplateFile.GetValue(arguments, &ctx.Vars)
@@ -39,42 +40,25 @@ func (t TemplatePromise) Eval(arguments []Constant, ctx *Context, stack string) 
 
 	var input interface{}
 	if err := json.Unmarshal([]byte(json_input), &input); err != nil {
-		ctx.Logger.Error(err.Error())
-		return false
+		return errors.Annotate(err, "unmarshal")
 	}
 
 	tmpl, err := template.ParseFiles(template_file)
 	if err != nil {
-		ctx.Logger.Error(err.Error())
-		return false
+		return errors.Annotate(err, "parse files")
 	}
 
 	fo, err := os.Create(output)
-	defer fo.Close()
 	if err != nil {
-		ctx.Logger.Error(err.Error())
-		return false
+		return errors.Annotate(err, "create output file")
 	}
+	defer fo.Close()
 
 	bfo := bufio.NewWriter(fo)
 	if err := tmpl.Execute(bfo, input); err != nil {
-		ctx.Logger.Error(err.Error())
-		return false
+		return errors.Annotate(err, "exec template")
 	}
 
 	bfo.Flush()
-	return true
+	return nil
 }
-
-//func (p TemplatePromise) Marshal(writer io.Writer) error {
-//	if err := p.JsonInput.Marshal(writer); err != nil {
-//		return err
-//	}
-//	if err := p.TemplateFile.Marshal(writer); err != nil {
-//		return err
-//	}
-//	if err := p.Output.Marshal(writer); err != nil {
-//		return err
-//	}
-//	return nil
-//}

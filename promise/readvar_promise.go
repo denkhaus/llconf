@@ -1,9 +1,10 @@
 package promise
 
 import (
-	"errors"
 	"io"
 	"strings"
+
+	"github.com/juju/errors"
 )
 
 type ReadvarPromise struct {
@@ -55,7 +56,7 @@ func (p ReadvarPromise) Desc(arguments []Constant) string {
 	return "(readvar " + strings.Join(args, ", ") + ")"
 }
 
-func (p ReadvarPromise) Eval(arguments []Constant, ctx *Context, stack string) bool {
+func (p ReadvarPromise) Eval(arguments []Constant, ctx *Context, stack string) error {
 	result := p.Exec.Eval(arguments, ctx, stack)
 
 	name := p.VarName.GetValue(arguments, &ctx.Vars)
@@ -65,14 +66,3 @@ func (p ReadvarPromise) Eval(arguments []Constant, ctx *Context, stack string) b
 
 	return result
 }
-
-//func (p ReadvarPromise) Marshal(writer io.Writer) error {
-//	if err := p.VarName.Marshal(writer); err != nil {
-//		return err
-//	}
-//	if err := p.Exec.Marshal(writer); err != nil {
-//		return err
-//	}
-
-//	return nil
-//}

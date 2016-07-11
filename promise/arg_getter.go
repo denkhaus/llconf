@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+
+	"github.com/juju/errors"
 )
 
 type ArgGetter struct {
@@ -23,7 +25,7 @@ func (p ArgGetter) String() string {
 
 func (p ArgGetter) Marshal(writer io.Writer) error {
 	if _, err := fmt.Fprintln(writer, p.Position); err != nil {
-		return err
+		return errors.Annotate(err, "fprintln")
 	}
 
 	return nil

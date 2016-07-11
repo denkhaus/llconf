@@ -11,7 +11,7 @@ func (p InDir) Desc(arguments []Constant) string {
 	return fmt.Sprintf("(indir %s %s)", p.Dir, p.Promise.Desc(arguments))
 }
 
-func (p InDir) Eval(arguments []Constant, ctx *Context, stack string) bool {
+func (p InDir) Eval(arguments []Constant, ctx *Context, stack string) error {
 	copyied_ctx := *ctx
 	copyied_ctx.InDir = p.Dir.GetValue(arguments, &ctx.Vars)
 	return p.Promise.Eval(arguments, &copyied_ctx, stack)

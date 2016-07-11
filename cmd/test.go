@@ -1,16 +1,16 @@
-package commands
+package cmd
 
 import (
-	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
+	"github.com/denkhaus/llconf/logging"
 	"github.com/juju/errors"
 )
 
-func NewTestCommand(logger *logrus.Logger) cli.Command {
+func NewTestCommand() cli.Command {
 	return cli.Command{
 		Name: "test",
 		Action: func(ctx *cli.Context) error {
-			rCtx, err := NewRunCtx(ctx, logger, true)
+			rCtx, err := NewRunCtx(ctx, true)
 			if err != nil {
 				return errors.Annotate(err, "new run context")
 			}
@@ -19,7 +19,7 @@ func NewTestCommand(logger *logrus.Logger) cli.Command {
 				return errors.Annotate(err, "compile promise")
 			}
 
-			rCtx.AppLogger.Info("test successful")
+			logging.Logger.Info("test successful")
 			return nil
 		},
 	}
