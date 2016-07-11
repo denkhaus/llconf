@@ -35,7 +35,7 @@ import (
 )
 
 //////////////////////////////////////////////////////////////////////////////////
-type SendCommand struct {
+type RemoteCommand struct {
 	Data        []byte
 	Stdin       io.Writer
 	Stdout      io.Reader
@@ -154,6 +154,7 @@ func (p *RunCtx) createServer() error {
 
 	srv := server.New(p.Host, p.Port, p.PrivKeyFile, p.CertFile, p.AppLogger)
 	srv.OnPromiseReceived = p.execPromise
+
 	if err := srv.ListenAndRun(); err != nil {
 		return errors.Annotate(err, "server listen")
 	}
@@ -164,7 +165,10 @@ func (p *RunCtx) createServer() error {
 //////////////////////////////////////////////////////////////////////////////////
 func (p *RunCtx) createClient() error {
 	hostPort := net.JoinHostPort(p.Host, fmt.Sprintf("%d", p.Port))
-	client, err := tls.Dial("tcp", hostPort, &tls.Config{InsecureSkipVerify: true})
+	client, err := tls.Dial("tcp", hostPort, &tls.Config{
+		InsecureSkipVerify: true,
+	})
+
 	if err != nil {
 		return errors.Annotate(err, "dial")
 	}
@@ -262,7 +266,7 @@ func (p *RunCtx) parseArguments(isClient bool) error {
 
 //////////////////////////////////////////////////////////////////////////////////
 func (p *RunCtx) sendPromise(tree promise.Promise) error {
-	cmd := SendCommand{
+	cmd := RemoteCommand{
 		Stdin:       os.Stdin,
 		Stdout:      os.Stdout,
 		Stderr:      os.Stderr,
@@ -279,12 +283,16 @@ func (p *RunCtx) sendPromise(tree promise.Promise) error {
 	if err := p.Sender.Send(&cmd); err != nil {
 		return errors.Annotate(err, "send")
 	}
+	if err := p.Sender.Close(); err != nil {
+		return errors.Annotate(err, "close sender channel")
+	}
 
-	resp := &server.CommandResponse{}
+	resp := server.CommandResponse{}
 	if err := p.Receiver.Receive(&resp); err != nil {
 		return errors.Annotate(err, "receive")
 	}
 
+	p.AppLogger.Info(resp.Status)
 	return resp.Error
 }
 

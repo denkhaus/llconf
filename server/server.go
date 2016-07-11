@@ -1,7 +1,6 @@
 package server
 
 import (
-	"bufio"
 	"bytes"
 	"crypto/tls"
 	"encoding/gob"
@@ -13,6 +12,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/juju/errors"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/denkhaus/llconf/promise"
 	"github.com/docker/libchan"
 	"github.com/docker/libchan/spdy"
@@ -29,7 +29,8 @@ type RemoteCommand struct {
 
 //////////////////////////////////////////////////////////////////////////////////
 type CommandResponse struct {
-	Error error
+	Status string
+	Error  error
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -90,31 +91,19 @@ func (p *Server) ListenAndRun() error {
 		return errors.Annotate(err, "listen")
 	}
 
-	p.listener = list
-	p.run()
+	p.Logger.Infof("listening on %s", hostPort)
 
-	return nil
+	p.listener = list
+	return p.run()
 }
 
 //////////////////////////////////////////////////////////////////////////////////
-func (p *Server) redirectOutput(cmd *RemoteCommand, ch chan bool) {
-	process := func(reader io.Reader, writer io.Writer) {
-		scn := bufio.NewScanner(reader)
-		for scn.Scan() {
-			fmt.Fprintf(writer, "remote: %s", scn.Text())
-
-			select {
-			case <-ch:
-				p.Logger.Info("redirect finished")
-				return
-			default:
-				p.Logger.Info("4")
-			}
-		}
-	}
-
-	go process(os.Stdout, cmd.Stdout)
-	go process(os.Stderr, cmd.Stderr)
+func (p *Server) redirectOutput(writer io.Writer, fn func()) {
+	p.Logger.Out = writer
+	defer func() {
+		p.Logger.Out = os.Stdout
+	}()
+	fn()
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -127,31 +116,36 @@ func (p *Server) receiveLoop(receiver libchan.Receiver) error {
 			return errors.Annotate(err, "receive")
 		}
 
+		p.Logger.Info("promise received")
+
 		pr := promise.NamedPromise{}
 		enc := gob.NewDecoder(bytes.NewBuffer(cmd.Data))
 		if err := enc.Decode(&pr); err != nil {
 			return errors.Annotate(err, "decode")
 		}
 
-		ch := make(chan bool)
-		p.redirectOutput(&cmd, ch)
-
-		if err := p.OnPromiseReceived(pr); err != nil {
-			return errors.Annotate(err, "on promise received")
-		}
-
 		res := CommandResponse{}
+		p.redirectOutput(cmd.Stdout, func() {
+			if err := p.OnPromiseReceived(pr); err != nil {
+				res.Error = errors.Annotate(err, "on promise received")
+				res.Status = "Execution Error"
+			} else {
+				res.Status = "Execution successfull"
+			}
+		})
+
+		p.Logger.Info("send answer")
 		if err := cmd.SendChannel.Send(&res); err != nil {
 			return errors.Annotate(err, "send")
 		}
-
-		ch <- true
 	}
 }
 
 //////////////////////////////////////////////////////////////////////////////////
 func (p *Server) receive(t libchan.Transport) error {
 	for {
+		p.Logger.Info("server: wait for message")
+
 		receiver, err := t.WaitReceiveChannel()
 		if err != nil {
 			return errors.Annotate(err, "wait receive channel")
@@ -159,7 +153,11 @@ func (p *Server) receive(t libchan.Transport) error {
 
 		go func() {
 			if err := p.receiveLoop(receiver); err != nil {
-				p.Logger.Fatalf("server: receive loop ended with error: %v", err)
+				spew.Dump(err)
+				if err != io.EOF {
+					p.Logger.Errorf("server: receive loop ended with error: %v",
+						errors.ErrorStack(err))
+				}
 			}
 		}()
 	}
@@ -169,7 +167,6 @@ func (p *Server) receive(t libchan.Transport) error {
 
 //////////////////////////////////////////////////////////////////////////////////
 func (p *Server) run() error {
-	p.Logger.Info("start server")
 
 	process := func() error {
 		for {
