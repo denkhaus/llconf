@@ -1,0 +1,7 @@
+(system restart
+	(change "sudo" "shutdown" "-r" "now")
+)
+
+(system halt
+	(change "sudo" "shutdown" "-h" "now")
+)
