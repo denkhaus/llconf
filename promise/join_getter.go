@@ -22,13 +22,3 @@ func (this JoinArgument) String() string {
 	}
 	return "joinargs-> " + strings.Join(args, " + ")
 }
-
-//func (p JoinArgument) Marshal(writer io.Writer) error {
-//	for _, arg := range p.Args {
-//		if err := arg.Marshal(writer); err != nil {
-//			return err
-//		}
-//	}
-
-//	return nil
-//}

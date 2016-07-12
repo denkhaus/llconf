@@ -1,3 +1,10 @@
 (done
-  (change "echo" "hallo denkhaus!")      
+	(and	
+		(installed "htop")
+		(installed "wget")
+		(ensure hostname "v777")
+		(change "echo" "hallo denkhaus!")
+		(ssh ready)
+		(ensure user absent "willy")
+	)        
 )

@@ -22,6 +22,7 @@ type RemoteCommand struct {
 	Data        []byte
 	Stdout      io.WriteCloser
 	SendChannel libchan.Sender
+	Verbose     bool
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -37,7 +38,7 @@ type Server struct {
 	Port              string
 	CertFile          string
 	KeyFile           string
-	OnPromiseReceived func(promise.Promise) error
+	OnPromiseReceived func(pr promise.Promise, verbose bool) error
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -105,6 +106,9 @@ func (p *Server) receiveLoop(receiver libchan.Receiver) error {
 
 		cmd := RemoteCommand{}
 		if err := receiver.Receive(&cmd); err != nil {
+			if err == io.EOF {
+				break
+			}
 			return errors.Annotate(err, "receive")
 		}
 
@@ -118,12 +122,12 @@ func (p *Server) receiveLoop(receiver libchan.Receiver) error {
 
 		res := CommandResponse{}
 		err := p.redirectOutput(cmd.Stdout, func() error {
-			if err := p.OnPromiseReceived(pr); err != nil {
-				res.Error = errors.Annotate(err, "on promise received")
-				res.Status = "Execution Error"
+			if err := p.OnPromiseReceived(pr, cmd.Verbose); err != nil {
+				res.Error = err
+				res.Status = "execution error"
 				return err
 			} else {
-				res.Status = "Execution successfull"
+				res.Status = "execution successfull"
 				return nil
 			}
 		})
@@ -134,25 +138,28 @@ func (p *Server) receiveLoop(receiver libchan.Receiver) error {
 			logging.Logger.Infof(res.Status)
 		}
 
-		logging.Logger.Info("send answer")
+		logging.Logger.Info("send response")
 		if err := cmd.SendChannel.Send(&res); err != nil {
 			return errors.Annotate(err, "send")
 		}
 	}
+	return nil
 }
 
 //////////////////////////////////////////////////////////////////////////////////
 func (p *Server) receive(t libchan.Transport) error {
 	for {
+
+		logging.Logger.Debug("server: wait for receive channel")
 		receiver, err := t.WaitReceiveChannel()
 		if err != nil {
 			return errors.Annotate(err, "wait receive channel")
 		}
 
+		logging.Logger.Debug("server: receive channel available")
 		go func() {
 			if err := p.receiveLoop(receiver); err != nil {
-				logging.Logger.Errorf("server: receive loop ended with error: %v",
-					errors.ErrorStack(err))
+				logging.Logger.Errorf("server: receive loop ended : %v", err)
 			}
 		}()
 	}
@@ -164,22 +171,24 @@ func (p *Server) receive(t libchan.Transport) error {
 func (p *Server) run() error {
 	process := func() error {
 		for {
-			logging.Logger.Info("server: wait for input")
+			logging.Logger.Debug("server: wait for connection")
 
 			c, err := p.listener.Accept()
 			if err != nil {
 				return errors.Annotate(err, "accept")
 			}
+
+			logging.Logger.Debug("server: connection available")
 			pr, err := spdy.NewSpdyStreamProvider(c, true)
 			if err != nil {
 				return errors.Annotate(err, "new stream provider")
 			}
+			defer pr.Close()
 
 			go func() {
 				t := spdy.NewTransport(pr)
 				if err := p.receive(t); err != nil {
-					pr.Close()
-					logging.Logger.Fatalf("server: receive ended with error: %v", err)
+					logging.Logger.Errorf("server: receive ended with error: %v", err)
 				}
 			}()
 		}

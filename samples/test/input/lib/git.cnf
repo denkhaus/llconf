@@ -1,5 +1,6 @@
 (git clone
-    (or (and
+    (or 
+		(and
             (git repo present [arg:1])
             (git repo uptodate [arg:1])
         )
@@ -15,10 +16,12 @@
 
 (git repo uptodate
     (indir [arg:0]
-        (and  (test "git" "fetch" "--all")
-              (or  (test "git" "diff" "--quiet" "HEAD@{upstream}")
-                  (change "git" "reset" "--hard" "HEAD@{upstream}")
-              )
+        (and  
+			(test "git" "fetch" "--all")
+			(or  
+				(test "git" "diff" "--quiet" "HEAD@{upstream}")
+				(change "git" "reset" "--hard" "HEAD@{upstream}")
+			)
         )
     )
 )

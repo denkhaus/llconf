@@ -1,9 +1,26 @@
 (installed
     (or
-        (pipe
-            (test"dpkg-query" "-W" "--showformat='${Status}\n'" [arg:0])
-            (test "grep" "install ok installed")
-        )
+        (is package present [arg:0])
         (change "sudo" "apt-get" "--force-yes" "--yes" "install" [arg:0])
+    )
+)
+
+(uninstalled
+	(or
+	   	(is package absent [arg:0])
+		(change "sudo" "apt-get" "--yes" "purge" [arg:0])
+	)
+)
+
+(is package absent
+	(not
+		(is package present [arg:0])
+	)
+)
+
+(is package present
+	(pipe
+        (test "dpkg-query" "-W" "--showformat='${Status}\n'" [arg:0])
+        (test "grep" "install ok installed")
     )
 )

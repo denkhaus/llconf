@@ -11,10 +11,10 @@ import (
 )
 
 var builtins = map[string]promise.Promise{
-	"or":   promise.OrPromise{},
-	"and":  promise.AndPromise{},
-	"test": promise.ExecPromise{Type: promise.ExecTest},
-
+	"or":       promise.OrPromise{},
+	"and":      promise.AndPromise{},
+	"not":      promise.NotPromise{},
+	"test":     promise.ExecPromise{Type: promise.ExecTest},
 	"indir":    promise.InDir{},
 	"setenv":   promise.SetEnv{},
 	"change":   promise.ExecPromise{Type: promise.ExecChange},

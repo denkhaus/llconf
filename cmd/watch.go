@@ -59,7 +59,7 @@ func NewWatchCommand() cli.Command {
 					return errors.New("could not find any valid promises")
 				}
 
-				if err := rCtx.execPromise(tree); err != nil {
+				if err := rCtx.execPromise(tree, rCtx.Verbose); err != nil {
 					return errors.Annotate(err, "exec promise")
 				}
 

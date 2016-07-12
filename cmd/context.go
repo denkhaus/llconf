@@ -38,6 +38,7 @@ type RemoteCommand struct {
 	Data        []byte
 	Stdout      io.Reader
 	SendChannel libchan.Sender
+	Verbose     bool
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -187,6 +188,8 @@ func (p *RunCtx) createClient() error {
 
 //////////////////////////////////////////////////////////////////////////////////
 func (p *RunCtx) compilePromise() (promise.Promise, error) {
+	logging.Logger.Info("compile promise")
+
 	promises, err := compiler.Compile(p.InputDir)
 	if err != nil {
 		return nil, errors.Annotate(err, "compile promise")
@@ -224,6 +227,7 @@ func (p *RunCtx) parseArguments(isClient bool) error {
 		p.RunlogPath = filepath.Join(p.WorkDir, "runlog")
 	}
 
+	logging.SetDebug(p.AppCtx.GlobalBool("debug"))
 	p.RootPromise = p.AppCtx.GlobalString("promise")
 	p.Verbose = p.AppCtx.GlobalBool("verbose")
 	p.Host = p.AppCtx.GlobalString("host")
@@ -256,6 +260,12 @@ func (p *RunCtx) parseArguments(isClient bool) error {
 
 	gob.Register(promise.NamedPromise{})
 	gob.Register(promise.ExecPromise{})
+	gob.Register(promise.AndPromise{})
+	gob.Register(promise.OrPromise{})
+	gob.Register(promise.NotPromise{})
+	gob.Register(promise.PipePromise{})
+	gob.Register(promise.ArgGetter{})
+	gob.Register(promise.JoinArgument{})
 	gob.Register(promise.Constant("const"))
 	return nil
 }
@@ -273,8 +283,10 @@ func (p *RunCtx) sendPromise(tree promise.Promise) error {
 		Data:        buf.Bytes(),
 		Stdout:      os.Stdout,
 		SendChannel: p.RemoteSender,
+		Verbose:     p.Verbose,
 	}
 
+	logging.Logger.Info("send promise")
 	if err := p.Sender.Send(cmd); err != nil {
 		return errors.Annotate(err, "send")
 	}
@@ -293,7 +305,7 @@ func (p *RunCtx) sendPromise(tree promise.Promise) error {
 }
 
 //////////////////////////////////////////////////////////////////////////////////
-func (p *RunCtx) execPromise(tree promise.Promise) error {
+func (p *RunCtx) execPromise(tree promise.Promise, verbose bool) error {
 	vars := promise.Variables{}
 	vars["input_dir"] = p.InputDir
 	vars["work_dir"] = p.WorkDir
@@ -304,7 +316,7 @@ func (p *RunCtx) execPromise(tree promise.Promise) error {
 		Vars:       vars,
 		Args:       p.AppCtx.Args(),
 		Env:        []string{},
-		Verbose:    p.Verbose,
+		Verbose:    verbose,
 		InDir:      "",
 	}
 
@@ -317,7 +329,6 @@ func (p *RunCtx) execPromise(tree promise.Promise) error {
 		logging.Logger.Changes, logging.Logger.Tests, endtime.Sub(starttime))
 
 	writeRunLog(err, starttime, endtime, p.RunlogPath)
-
 	return err
 }
 

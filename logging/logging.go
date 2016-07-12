@@ -23,11 +23,19 @@ func (p *stdLogger) Reset() {
 func init() {
 	log := &stdLogger{}
 	log.Logger = logrus.New()
-	log.Level = logrus.DebugLevel
+
 	log.Out = os.Stdout
 	Logger = log
 }
 
 func SetOutWriter(writer io.Writer) {
 	Logger.Out = writer
+}
+
+func SetDebug(enabled bool) {
+	if enabled {
+		Logger.Level = logrus.DebugLevel
+	} else {
+		Logger.Level = logrus.InfoLevel
+	}
 }

@@ -1,0 +1,23 @@
+(ufw ready
+	(and
+		(ufw present)
+		(ufw configured)
+		(ufw enabled)
+	)
+)
+
+(ufw present
+	(installed "ufw")
+)
+
+(ufw enabled
+	(change "sudo" "ufw" "enable")
+)
+
+(ufw configured
+	(and
+		(change "sudo" "ufw" "default" "deny")
+		(change "sudo" "ufw" "allow" "ssh")
+		(change "sudo" "sed" "-i" "s|[#]*& ~|& stop|g" "/etc/rsyslog.d/20-ufw.conf")		
+	)
+)

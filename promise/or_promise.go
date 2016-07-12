@@ -32,5 +32,5 @@ func (p OrPromise) Eval(arguments []Constant, ctx *Context, stack string) error 
 			return err
 		}
 	}
-	return errors.New("or not fulfilled")
+	return errors.New("or promise not fulfilled")
 }

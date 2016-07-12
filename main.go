@@ -1,12 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/codegangsta/cli"
 	"github.com/denkhaus/llconf/cmd"
-	"github.com/juju/errors"
+	"github.com/denkhaus/llconf/logging"
 )
 
 func main() {
@@ -37,6 +36,11 @@ func main() {
 			Usage:  "enable verbose output",
 			EnvVar: "LLCONF_VERBOSE",
 		},
+		cli.BoolFlag{
+			Name:   "debug",
+			Usage:  "enable debug output",
+			EnvVar: "LLCONF_DEBUG",
+		},
 	}
 
 	app.Commands = []cli.Command{
@@ -45,10 +49,8 @@ func main() {
 		cmd.NewTestCommand(),
 		cmd.NewWatchCommand(),
 	}
-
 	if err := app.Run(os.Args); err != nil {
-		fmt.Printf("execution error: %s\n",
-			errors.ErrorStack(err))
+		logging.Logger.Error(err)
 		os.Exit(1)
 	}
 }

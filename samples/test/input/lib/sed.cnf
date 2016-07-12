@@ -1,0 +1,3 @@
+(sudo sed
+	(change "sudo" "sed" "-i" "-e" [join "s@" [arg:0] "@" [arg:1] "@g"] [arg:2])
+)
