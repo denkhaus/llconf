@@ -65,11 +65,3 @@ func (p RestartPromise) restartLLConf(exe string, args []string, stdout, stderr 
 	err := cmd.Start()
 	return cmd, err
 }
-
-//func (p RestartPromise) Marshal(writer io.Writer) error {
-//	if err := p.NewExe.Marshal(writer); err != nil {
-//		return err
-//	}
-
-//	return nil
-//}

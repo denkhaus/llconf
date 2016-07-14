@@ -1,9 +1,13 @@
 (done	
 	(and
-		(installed "htop")
-		(installed "git")		
-		(change "pwd")		
-		(git clone "github.com/denkhaus/yamlconfig")		
+		(installed "htop")		
+		(self update)		
 	)		
 )
 
+(self update
+	(and
+		(change "go" "get" "-u" "github.com/denkhaus/llconf")
+		(restart "/go/bin/llconf")
+	)	
+)

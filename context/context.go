@@ -415,6 +415,7 @@ func (p *context) parseArguments(isClient bool) error {
 	gob.Register(promise.ArgGetter{})
 	gob.Register(promise.JoinArgument{})
 	gob.Register(promise.InDir{})
+	gob.Register(promise.RestartPromise{})
 	gob.Register(promise.Constant("const"))
 
 	return nil
