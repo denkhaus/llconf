@@ -25,12 +25,7 @@ func main() {
 			EnvVar: "LLCONF_PORT",
 			Value:  9954,
 		},
-		cli.StringFlag{
-			Name:   "promise, p",
-			Usage:  "the root promise name",
-			EnvVar: "LLCONF_PROMISE",
-			Value:  "done",
-		},
+
 		cli.BoolFlag{
 			Name:   "verbose",
 			Usage:  "enable verbose output",
@@ -44,11 +39,10 @@ func main() {
 	}
 
 	app.Commands = []cli.Command{
-		cmd.NewRunCommand(),
-		cmd.NewServeCommand(),
-		cmd.NewTestCommand(),
-		cmd.NewWatchCommand(),
+		cmd.NewClientCommand(),
+		cmd.NewServerCommand(),
 	}
+
 	if err := app.Run(os.Args); err != nil {
 		logging.Logger.Error(err)
 		os.Exit(1)

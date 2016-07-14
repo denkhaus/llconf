@@ -6,5 +6,6 @@
 		(change "echo" "hallo denkhaus!")
 		(ssh ready)
 		(ensure user absent "willy")
+		
 	)        
 )

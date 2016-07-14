@@ -10,6 +10,7 @@ import (
 	"os"
 
 	"github.com/denkhaus/llconf/logging"
+	"github.com/denkhaus/llconf/store"
 	"github.com/juju/errors"
 
 	"github.com/denkhaus/llconf/promise"
@@ -36,52 +37,49 @@ type Server struct {
 	listener          net.Listener
 	Host              string
 	Port              string
-	CertFile          string
-	KeyFile           string
+	DataStore         *store.DataStore
 	OnPromiseReceived func(pr promise.Promise, verbose bool) error
 }
 
 //////////////////////////////////////////////////////////////////////////////////
-func New(host string, port int, keyFile, certFile string) *Server {
+func New(host string, port int, ds *store.DataStore) *Server {
 	serv := Server{
-		Host:     host,
-		Port:     fmt.Sprintf("%d", port),
-		KeyFile:  keyFile,
-		CertFile: certFile,
+		Host:      host,
+		Port:      fmt.Sprintf("%d", port),
+		DataStore: ds,
 	}
 
 	return &serv
 }
 
 //////////////////////////////////////////////////////////////////////////////////
-func (p *Server) loadCertificate() (*tls.Certificate, error) {
-	if _, err := os.Stat(p.CertFile); os.IsNotExist(err) {
-		return nil, errors.New("tls cert file not found")
-	}
-	if _, err := os.Stat(p.KeyFile); os.IsNotExist(err) {
-		return nil, errors.New("tls key file not found")
-	}
-	tlsCert, err := tls.LoadX509KeyPair(p.CertFile, p.KeyFile)
+func (p *Server) ListenAndRun(cert *tls.Certificate) error {
+	pool, err := p.DataStore.ClientCertPool()
 	if err != nil {
-		return nil, errors.Annotate(err, "load key pair")
-	}
-
-	return &tlsCert, nil
-}
-
-//////////////////////////////////////////////////////////////////////////////////
-func (p *Server) ListenAndRun() error {
-	tlsCert, err := p.loadCertificate()
-	if err != nil {
-		return errors.Annotate(err, "load certificate")
+		return errors.Annotate(err, "get client cert pool")
 	}
 
 	tlsConfig := &tls.Config{
-		InsecureSkipVerify: true,
-		Certificates:       []tls.Certificate{*tlsCert},
+		Certificates: []tls.Certificate{*cert},
+		// Reject any TLS certificate that cannot be validated
+		ClientAuth: tls.RequireAndVerifyClientCert,
+
+		// Ensure that we only use our "CA" to validate certificates
+		ClientCAs: pool,
+		CipherSuites: []uint16{
+			tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_RSA_WITH_AES_256_CBC_SHA,
+		},
+
+		// Force it server side
+		PreferServerCipherSuites: true,
+		// TLS 1.2 because we can
+		MinVersion: tls.VersionTLS12,
 	}
 
+	tlsConfig.BuildNameToCertificate()
 	hostPort := net.JoinHostPort(p.Host, p.Port)
+
 	list, err := tls.Listen("tcp", hostPort, tlsConfig)
 	if err != nil {
 		return errors.Annotate(err, "listen")
