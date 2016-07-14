@@ -1,9 +1,9 @@
 (system restart
-	(change "sudo" "shutdown" "-r" "now")
+	(change "shutdown" "-r" "now")
 )
 
 (system halt
-	(change "sudo" "shutdown" "-h" "now")
+	(change "shutdown" "-h" "now")
 )
 
 (system update

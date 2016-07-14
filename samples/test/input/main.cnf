@@ -1,8 +1,9 @@
 (done	
 	(and
 		(installed "htop")
-		(installed "git")
-		(system update)
+		(installed "git")		
+		(change "pwd")		
+		(git clone "github.com/denkhaus/yamlconfig")		
 	)		
 )
 

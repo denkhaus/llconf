@@ -6,7 +6,7 @@ all: build run
 ################################################################################
 run:		
 	- docker rm -f llconf
-	docker run -d --name llconf -p localhost:9954:9954 $(DOCKER_IMAGE)
+	docker run -d --name llconf -p 9954:9954 $(DOCKER_IMAGE)
 	docker cp ~/.llconf/cert/client.cert.pem llconf:/client.cert.pem
 	sleep 25
 	
