@@ -4,13 +4,12 @@ DOCKER_IMAGE		   := denkhaus/llconf
 all: build run
 
 ################################################################################
-run:
+run:		
 	- docker rm llconf
-	docker run -it --name llconf -p 9954:9954 $(DOCKER_IMAGE) -H 0.0.0.0 server run
-
-################################################################################
-install-cert:	
-	docker cp llconf:/root/.llconf/cert/server.cert.pem /tmp
+	docker run -d --name llconf -p 9954:9954 $(DOCKER_IMAGE)
+	docker cp ~/.llconf/cert/client.cert.pem llconf:/client.cert.pem
+	sleep 25
+	docker cp llconf:/root/.llconf/cert/server.cert.pem /tmp/server.cert.pem
 	- llconf client cert rm --id docker
 	llconf client cert add --id docker --path /tmp/server.cert.pem
 	rm -f /tmp/server.cert.pem
@@ -20,7 +19,7 @@ push:
 	docker push $(DOCKER_IMAGE)
 
 ################################################################################
-build:
+build:	
 	docker build -t $(DOCKER_IMAGE) .
 
 ################################################################################

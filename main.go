@@ -17,7 +17,7 @@ func main() {
 			Name:   "host, H",
 			Usage:  "the host the promise is executed on",
 			EnvVar: "LLCONF_HOST",
-			Value:  "localhost",
+			Value:  "0.0.0.0",
 		},
 		cli.IntFlag{
 			Name:   "port, P",

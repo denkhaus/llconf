@@ -3,7 +3,7 @@
 (ensure hostname
 	(or
 		(has hostname [arg:0])
-		(change "hostname" "-b" [arg:0])
+		(change "sudo" "hostname" "-b" [arg:0])
 	)
 )
 

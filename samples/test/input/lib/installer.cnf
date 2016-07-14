@@ -4,7 +4,7 @@
 		(is debian)
 		(or
         	(debian is package present [arg:0])
-        	(change "sudo" "apt-get" "--force-yes" "--yes" "install" [arg:0])
+        	(change "apt-get" "--force-yes" "--yes" "install" [arg:0])
     	)
 	)    
 )
@@ -14,7 +14,7 @@
 		(is debian)	
 		(or
 		   	(debian is package absent [arg:0])
-			(change "sudo" "apt-get" "--yes" "purge" [arg:0])
+			(change "apt-get" "--yes" "purge" [arg:0])
 		)
 	)
 )

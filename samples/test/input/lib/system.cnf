@@ -9,10 +9,10 @@
 (system update
     (and
 		(is debian)
-        (change "sudo" "apt-get" "update")
-        (change "sudo" "apt-get" "--yes" "upgrade")
-        (change "sudo" "apt-get" "--yes" "dist-upgrade")
-		(change "sudo" "apt-get" "--yes" "autoremove")
+        (change "apt-get" "update")
+        (change "apt-get" "--yes" "upgrade")
+        (change "apt-get" "--yes" "dist-upgrade")
+		(change "apt-get" "--yes" "autoremove")
 	)
 )
 

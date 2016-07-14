@@ -1,4 +1,8 @@
 (done	
-		(ensure hostname "lulu")	        
+	(and
+		(installed "htop")
+		(installed "git")
+		(system update)
+	)		
 )
 
