@@ -54,7 +54,7 @@ func New(host string, port int, ds *store.DataStore) *Server {
 
 //////////////////////////////////////////////////////////////////////////////////
 func (p *Server) ListenAndRun(cert *tls.Certificate) error {
-	pool, err := p.DataStore.ClientCertPool()
+	pool, err := p.DataStore.Pool()
 	if err != nil {
 		return errors.Annotate(err, "get client cert pool")
 	}
@@ -63,14 +63,12 @@ func (p *Server) ListenAndRun(cert *tls.Certificate) error {
 		Certificates: []tls.Certificate{*cert},
 		// Reject any TLS certificate that cannot be validated
 		ClientAuth: tls.RequireAndVerifyClientCert,
-
 		// Ensure that we only use our "CA" to validate certificates
 		ClientCAs: pool,
 		CipherSuites: []uint16{
 			tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
 			tls.TLS_RSA_WITH_AES_256_CBC_SHA,
 		},
-
 		// Force it server side
 		PreferServerCipherSuites: true,
 		// TLS 1.2 because we can

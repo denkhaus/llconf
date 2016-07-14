@@ -19,30 +19,26 @@ type CertEntry struct {
 
 ////////////////////////////////////////////////////////////////////////////////
 type DataStore struct {
-	db       *bolt.DB
-	clientCS *stow.Store
-	serverCS *stow.Store
+	db        *bolt.DB
+	role      string
+	certStore *stow.Store
+	serverCS  *stow.Store
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-var (
-	ErrNotFound = fmt.Errorf("Datastore:: value not found")
-)
+func New(id, role, storePath string) (*DataStore, error) {
 
-////////////////////////////////////////////////////////////////////////////////
-func New(storePath string) (*DataStore, error) {
-	db, err := bolt.Open(path.Join(storePath, "store.db"), 0600, nil)
+	storePath = path.Join(storePath, fmt.Sprintf("%s.store.db", id))
+	db, err := bolt.Open(storePath, 0600, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	clientCertStore := stow.NewStore(db, []byte("client-certs"))
-	serverCertStore := stow.NewStore(db, []byte("server-certs"))
-
+	certStore := stow.NewStore(db, []byte("certs"))
 	store := &DataStore{
-		db:       db,
-		clientCS: clientCertStore,
-		serverCS: serverCertStore,
+		db:        db,
+		role:      role,
+		certStore: certStore,
 	}
 
 	return store, nil
@@ -60,12 +56,12 @@ func (d *DataStore) Close() error {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-func (d *DataStore) ClientCertPool() (*x509.CertPool, error) {
+func (d *DataStore) Pool() (*x509.CertPool, error) {
 	pool := x509.NewCertPool()
 
-	err := d.clientCS.ForEach(func(clientID string, entry CertEntry) {
+	err := d.certStore.ForEach(func(id string, entry CertEntry) {
 		if ok := pool.AppendCertsFromPEM(entry.Data); !ok {
-			logging.Logger.Errorf("unable to add client certificate for id %q to pool", clientID)
+			logging.Logger.Errorf("unable to add %s certificate for id %q to pool", d.role, id)
 		}
 	})
 	if err != nil {
@@ -73,87 +69,36 @@ func (d *DataStore) ClientCertPool() (*x509.CertPool, error) {
 	}
 
 	if len(pool.Subjects()) == 0 {
-		return nil, errors.New("no client certificates stored")
+		return nil, errors.Errorf("no %s certificates stored", d.role)
 	}
 
 	return pool, nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-func (d *DataStore) ServerCertPool() (*x509.CertPool, error) {
-	pool := x509.NewCertPool()
-
-	err := d.serverCS.ForEach(func(serverID string, entry CertEntry) {
-		if ok := pool.AppendCertsFromPEM(entry.Data); !ok {
-			logging.Logger.Errorf("unable to add server certificate for id %q to pool", serverID)
-		}
-	})
-	if err != nil {
-		return nil, errors.Annotate(err, "enumerate cert entries")
-	}
-
-	if len(pool.Subjects()) == 0 {
-		return nil, errors.New("no server certificates stored")
-	}
-
-	return pool, nil
-}
-
-////////////////////////////////////////////////////////////////////////////////
-func (d *DataStore) StoreClientCert(clientID string, certPath string) error {
+func (d *DataStore) StoreCert(id string, certPath string) error {
 	data, err := ioutil.ReadFile(certPath)
 	if err != nil {
-		return errors.Annotate(err, "load client cert file")
+		return errors.Annotatef(err, "load %s cert file", d.role)
 	}
 	entry := CertEntry{}
-	if err := d.clientCS.Get(clientID, &entry); err == nil {
-		return errors.Errorf("certificate for client id %q already stored", clientID)
+	if err := d.certStore.Get(id, &entry); err == nil {
+		return errors.Errorf("certificate for %s id %q already stored", d.role, id)
 	}
 
 	entry.Data = data
-	return d.clientCS.Put(clientID, entry)
+	return d.certStore.Put(id, entry)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-func (d *DataStore) StoreServerCert(serverID string, certPath string) error {
-	data, err := ioutil.ReadFile(certPath)
-	if err != nil {
-		return errors.Annotate(err, "load server cert file")
-	}
+func (d *DataStore) RemoveCert(id string) error {
 	entry := CertEntry{}
-	if err := d.serverCS.Get(serverID, &entry); err == nil {
-		return errors.Errorf("certificate for server id %q already stored", serverID)
+	if err := d.certStore.Get(id, &entry); err != nil {
+		return errors.Errorf("certificate for %s id %q not available", d.role, id)
 	}
 
-	entry.Data = data
-	return d.serverCS.Put(serverID, entry)
-}
-
-////////////////////////////////////////////////////////////////////////////////
-func (d *DataStore) RemoveClientCert(clientID string) error {
-
-	entry := CertEntry{}
-	if err := d.clientCS.Get(clientID, &entry); err != nil {
-		return errors.Errorf("certificate for client id %q not available", clientID)
-	}
-
-	if err := d.clientCS.Delete(clientID); err != nil {
-		return errors.Annotatef(err, "delete certificate for client id %q", clientID)
-	}
-
-	return nil
-}
-
-////////////////////////////////////////////////////////////////////////////////
-func (d *DataStore) RemoveServerCert(serverID string) error {
-
-	entry := CertEntry{}
-	if err := d.serverCS.Get(serverID, &entry); err != nil {
-		return errors.Errorf("certificate for server id %q not available", serverID)
-	}
-
-	if err := d.serverCS.Delete(serverID); err != nil {
-		return errors.Annotatef(err, "delete certificate for server id %q", serverID)
+	if err := d.certStore.Delete(id); err != nil {
+		return errors.Annotatef(err, "delete certificate for %s id %q", d.role, id)
 	}
 
 	return nil

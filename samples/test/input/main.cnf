@@ -2,10 +2,8 @@
 	(and	
 		(installed "htop")
 		(installed "wget")
-		(ensure hostname "v777")
-		(change "echo" "hallo denkhaus!")
+		(ensure hostname "v999")		
 		(ssh ready)
-		(ensure user absent "willy")
-		
+		(system update)		
 	)        
 )

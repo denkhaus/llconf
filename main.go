@@ -25,7 +25,6 @@ func main() {
 			EnvVar: "LLCONF_PORT",
 			Value:  9954,
 		},
-
 		cli.BoolFlag{
 			Name:   "verbose",
 			Usage:  "enable verbose output",
@@ -35,6 +34,16 @@ func main() {
 			Name:   "debug",
 			Usage:  "enable debug output",
 			EnvVar: "LLCONF_DEBUG",
+		},
+		cli.StringFlag{
+			Name:   "runlog-path, r",
+			Usage:  "path to runlog",
+			EnvVar: "LLCONF_RUNLOG",
+		},
+		cli.BoolFlag{
+			Name:   "syslog, s",
+			Usage:  "output to syslog",
+			EnvVar: "LLCONF_SYSLOG",
 		},
 	}
 

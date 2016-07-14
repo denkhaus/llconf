@@ -1,26 +1,58 @@
+
 (installed
-    (or
-        (is package present [arg:0])
-        (change "sudo" "apt-get" "--force-yes" "--yes" "install" [arg:0])
-    )
+	(and
+		(is debian)
+		(or
+        	(debian is package present [arg:0])
+        	(change "sudo" "apt-get" "--force-yes" "--yes" "install" [arg:0])
+    	)
+	)    
 )
 
 (uninstalled
-	(or
-	   	(is package absent [arg:0])
-		(change "sudo" "apt-get" "--yes" "purge" [arg:0])
+	(and
+		(is debian)	
+		(or
+		   	(debian is package absent [arg:0])
+			(change "sudo" "apt-get" "--yes" "purge" [arg:0])
+		)
 	)
 )
 
-(is package absent
+(debian is package absent
 	(not
-		(is package present [arg:0])
+		(debian is package present [arg:0])
 	)
 )
 
-(is package present
-	(pipe
-        (test "dpkg-query" "-W" "--showformat='${Status}\n'" [arg:0])
-        (test "grep" "install ok installed")
-    )
+(debian is package present
+	(and
+		(is debian)
+		(pipe
+	        (test "dpkg-query" "-W" "--showformat='${Status}\n'" [arg:0])
+	        (test "grep" "install ok installed")
+	    )
+	)	
+)
+
+(yum installed
+    (or 
+		(yum package present) 
+		(yum install package))
+	)
+
+(yum package present
+  	(pipe
+    	(test "yum" "--quiet" "list" "installed")
+	    (test "sed" "-rn" "s/([^.]+).*/\1/p")
+	    (test "grep" [arg:0])
+	)
+)
+
+(yum install package
+  	(change "yum" "install" [arg:0])
+)
+
+(rpm install package
+  	(change "rpm" "-ihv" [arg:0])
 )

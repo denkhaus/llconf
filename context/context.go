@@ -47,29 +47,30 @@ type RemoteCommand struct {
 //////////////////////////////////////////////////////////////////////////////////
 type context struct {
 	Verbose            bool
-	UseSyslog          bool
+	useSyslog          bool
 	Interval           int
-	Port               int
-	RootPromise        string
-	InputDir           string
-	WorkDir            string
-	RunlogPath         string
-	Host               string
-	SettingsDir        string
-	DataStore          *store.DataStore
-	ClientPrivKeyPath  string
-	ClientCertFilePath string
-	ServerPrivKeyPath  string
-	ServerCertFilePath string
-	AppCtx             *cli.Context
-	Sender             libchan.Sender
-	Receiver           libchan.Receiver
-	RemoteSender       libchan.Sender
+	port               int
+	rootPromise        string
+	inputDir           string
+	workDir            string
+	runlogPath         string
+	host               string
+	settingsDir        string
+	dataStore          *store.DataStore
+	clientPrivKeyPath  string
+	clientCertFilePath string
+	serverPrivKeyPath  string
+	serverCertFilePath string
+	certRole           string
+	appCtx             *cli.Context
+	sender             libchan.Sender
+	receiver           libchan.Receiver
+	remoteSender       libchan.Sender
 }
 
 //////////////////////////////////////////////////////////////////////////////////
 func New(ctx *cli.Context, isClient bool) (*context, error) {
-	rCtx := context{AppCtx: ctx}
+	rCtx := context{appCtx: ctx}
 	err := rCtx.parseArguments(isClient)
 	if err == nil {
 		go rCtx.signalHandler()
@@ -82,8 +83,8 @@ func New(ctx *cli.Context, isClient bool) (*context, error) {
 func (p *context) Close() error {
 	logging.Logger.Debug("close context")
 
-	if p.DataStore != nil {
-		err := p.DataStore.Close()
+	if p.dataStore != nil {
+		err := p.dataStore.Close()
 		if err == nil {
 			logging.Logger.Info("datastore closed")
 		}
@@ -108,7 +109,7 @@ func (p *context) signalHandler() {
 
 //////////////////////////////////////////////////////////////////////////////////
 func (p *context) upgradeLogging() error {
-	if p.UseSyslog {
+	if p.useSyslog {
 		hook, err := syslogger.NewSyslogHook("", "", syslog.LOG_INFO, "")
 		if err != nil {
 			return err
@@ -122,24 +123,24 @@ func (p *context) upgradeLogging() error {
 
 //////////////////////////////////////////////////////////////////////////////////
 func (p *context) ensureClientCert() error {
-	if fileExists(p.ClientPrivKeyPath) &&
-		fileExists(p.ClientCertFilePath) {
+	if fileExists(p.clientPrivKeyPath) &&
+		fileExists(p.clientCertFilePath) {
 		return nil
 	}
 
 	logging.Logger.Info("create client certificates")
-	return p.generateCert(p.ClientPrivKeyPath, p.ClientCertFilePath)
+	return p.generateCert(p.clientPrivKeyPath, p.clientCertFilePath)
 }
 
 //////////////////////////////////////////////////////////////////////////////////
 func (p *context) ensureServerCert() error {
-	if fileExists(p.ServerPrivKeyPath) &&
-		fileExists(p.ServerCertFilePath) {
+	if fileExists(p.serverPrivKeyPath) &&
+		fileExists(p.serverCertFilePath) {
 		return nil
 	}
 
 	logging.Logger.Info("create server certificates")
-	return p.generateCert(p.ServerPrivKeyPath, p.ServerCertFilePath)
+	return p.generateCert(p.serverPrivKeyPath, p.serverCertFilePath)
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -213,7 +214,7 @@ func (p *context) CreateServer() error {
 		return errors.Annotate(err, "load server cert")
 	}
 
-	srv := server.New(p.Host, p.Port, p.DataStore)
+	srv := server.New(p.host, p.port, p.dataStore)
 	srv.OnPromiseReceived = p.ExecPromise
 
 	if err := srv.ListenAndRun(cert); err != nil {
@@ -225,14 +226,14 @@ func (p *context) CreateServer() error {
 
 //////////////////////////////////////////////////////////////////////////////////
 func (p *context) loadServerCert() (*tls.Certificate, error) {
-	if _, err := os.Stat(p.ServerCertFilePath); os.IsNotExist(err) {
+	if _, err := os.Stat(p.serverCertFilePath); os.IsNotExist(err) {
 		return nil, errors.New("tls cert file not found")
 	}
-	if _, err := os.Stat(p.ServerPrivKeyPath); os.IsNotExist(err) {
+	if _, err := os.Stat(p.serverPrivKeyPath); os.IsNotExist(err) {
 		return nil, errors.New("tls privkey file not found")
 	}
 
-	tlsCert, err := tls.LoadX509KeyPair(p.ServerCertFilePath, p.ServerPrivKeyPath)
+	tlsCert, err := tls.LoadX509KeyPair(p.serverCertFilePath, p.serverPrivKeyPath)
 	if err != nil {
 		return nil, errors.Annotate(err, "load key pair")
 	}
@@ -242,14 +243,14 @@ func (p *context) loadServerCert() (*tls.Certificate, error) {
 
 //////////////////////////////////////////////////////////////////////////////////
 func (p *context) loadClientCert() (*tls.Certificate, error) {
-	if _, err := os.Stat(p.ClientCertFilePath); os.IsNotExist(err) {
+	if _, err := os.Stat(p.clientCertFilePath); os.IsNotExist(err) {
 		return nil, errors.New("tls cert file not found")
 	}
-	if _, err := os.Stat(p.ClientPrivKeyPath); os.IsNotExist(err) {
+	if _, err := os.Stat(p.clientPrivKeyPath); os.IsNotExist(err) {
 		return nil, errors.New("tls privkey file not found")
 	}
 
-	tlsCert, err := tls.LoadX509KeyPair(p.ClientCertFilePath, p.ClientPrivKeyPath)
+	tlsCert, err := tls.LoadX509KeyPair(p.clientCertFilePath, p.clientPrivKeyPath)
 	if err != nil {
 		return nil, errors.Annotate(err, "load key pair")
 	}
@@ -264,7 +265,7 @@ func (p *context) CreateClient() error {
 		return errors.Annotate(err, "load client cert")
 	}
 
-	pool, err := p.DataStore.ServerCertPool()
+	pool, err := p.dataStore.Pool()
 	if err != nil {
 		return errors.Annotate(err, "get server cert pool")
 	}
@@ -275,7 +276,7 @@ func (p *context) CreateClient() error {
 	}
 
 	tlsConfig.BuildNameToCertificate()
-	hostPort := net.JoinHostPort(p.Host, fmt.Sprintf("%d", p.Port))
+	hostPort := net.JoinHostPort(p.host, fmt.Sprintf("%d", p.port))
 
 	conn, err := tls.Dial("tcp", hostPort, &tlsConfig)
 
@@ -294,8 +295,8 @@ func (p *context) CreateClient() error {
 		return errors.Annotate(err, "new send channel")
 	}
 
-	p.Sender = snd
-	p.Receiver, p.RemoteSender = libchan.Pipe()
+	p.sender = snd
+	p.receiver, p.remoteSender = libchan.Pipe()
 	return nil
 }
 
@@ -303,14 +304,14 @@ func (p *context) CreateClient() error {
 func (p *context) CompilePromise() (promise.Promise, error) {
 	logging.Logger.Info("compile promise")
 
-	promises, err := compiler.Compile(p.InputDir)
+	promises, err := compiler.Compile(p.inputDir)
 	if err != nil {
 		return nil, errors.Annotate(err, "compile promise")
 	}
 
-	tree, ok := promises[p.RootPromise]
+	tree, ok := promises[p.rootPromise]
 	if !ok {
-		return nil, errors.New("root promise (" + p.RootPromise + ") unknown")
+		return nil, errors.New("root promise (" + p.rootPromise + ") unknown")
 	}
 
 	return tree, nil
@@ -323,31 +324,31 @@ func (p *context) parseArguments(isClient bool) error {
 	if err != nil {
 		return errors.Annotate(err, "get wd")
 	}
-	p.WorkDir = wd
+	p.workDir = wd
 
 	if isClient {
-		p.InputDir = p.AppCtx.String("input-folder")
-		if p.InputDir == "" {
-			p.InputDir = filepath.Join(p.WorkDir, "input")
+		p.inputDir = p.appCtx.String("input-folder")
+		if p.inputDir == "" {
+			p.inputDir = filepath.Join(p.workDir, "input")
 		}
-		if err := os.MkdirAll(p.InputDir, 0755); err != nil {
+		if err := os.MkdirAll(p.inputDir, 0755); err != nil {
 			return errors.Annotate(err, "create input dir")
 		}
 	}
 
-	p.RunlogPath = p.AppCtx.String("runlog-path")
-	if p.RunlogPath == "" {
-		p.RunlogPath = filepath.Join(p.WorkDir, "run.log")
+	p.runlogPath = p.appCtx.GlobalString("runlog-path")
+	if p.runlogPath == "" {
+		p.runlogPath = filepath.Join(p.workDir, "run.log")
 	}
 
-	logging.SetDebug(p.AppCtx.GlobalBool("debug"))
-	p.RootPromise = p.AppCtx.GlobalString("promise")
-	p.Verbose = p.AppCtx.GlobalBool("verbose")
-	p.Host = p.AppCtx.GlobalString("host")
-	p.Port = p.AppCtx.GlobalInt("port")
-	p.Interval = p.AppCtx.Int("interval")
+	logging.SetDebug(p.appCtx.GlobalBool("debug"))
+	p.rootPromise = p.appCtx.GlobalString("promise")
+	p.Verbose = p.appCtx.GlobalBool("verbose")
+	p.host = p.appCtx.GlobalString("host")
+	p.port = p.appCtx.GlobalInt("port")
+	p.Interval = p.appCtx.Int("interval")
 
-	p.UseSyslog = p.AppCtx.Bool("syslog")
+	p.useSyslog = p.appCtx.GlobalBool("syslog")
 	if err := p.upgradeLogging(); err != nil {
 		return errors.Annotate(err, "upgrade logging")
 	}
@@ -357,8 +358,8 @@ func (p *context) parseArguments(isClient bool) error {
 		return errors.Annotate(err, "get current user")
 	}
 
-	p.SettingsDir = path.Join(usr.HomeDir, "/.llconf")
-	if err := os.MkdirAll(p.SettingsDir, 0755); err != nil {
+	p.settingsDir = path.Join(usr.HomeDir, "/.llconf")
+	if err := os.MkdirAll(p.settingsDir, 0755); err != nil {
 		return errors.Annotate(err, "create settings dir")
 	}
 
@@ -367,34 +368,42 @@ func (p *context) parseArguments(isClient bool) error {
 		return errors.Annotate(err, "create cert dir")
 	}
 
-	if isClient {
-		p.ClientPrivKeyPath = path.Join(certDir, "client.privkey.pem")
-		p.ClientCertFilePath = path.Join(certDir, "client.cert.pem")
-		if err := p.ensureClientCert(); err != nil {
-			return errors.Annotate(err, "ensure client cert")
-		}
-	} else {
-		p.ServerPrivKeyPath = path.Join(certDir, "server.privkey.pem")
-		p.ServerCertFilePath = path.Join(certDir, "server.cert.pem")
-		if err := p.ensureServerCert(); err != nil {
-			return errors.Annotate(err, "ensure server cert")
-		}
-	}
-
 	dataStorePath := path.Join(usr.HomeDir, "/.llconf/store")
 	if err := os.MkdirAll(dataStorePath, 0700); err != nil {
 		return errors.Annotate(err, "create datastore dir")
 	}
 
-	store, err := store.New(dataStorePath)
-	if err != nil {
-		return errors.Annotate(err, "create data store")
+	if isClient {
+		p.clientPrivKeyPath = path.Join(certDir, "client.privkey.pem")
+		p.clientCertFilePath = path.Join(certDir, "client.cert.pem")
+		if err := p.ensureClientCert(); err != nil {
+			return errors.Annotate(err, "ensure client cert")
+		}
+
+		p.certRole = "server"
+		store, err := store.New("client", p.certRole, dataStorePath)
+		if err != nil {
+			return errors.Annotate(err, "create data store")
+		}
+		p.dataStore = store
+	} else {
+		p.serverPrivKeyPath = path.Join(certDir, "server.privkey.pem")
+		p.serverCertFilePath = path.Join(certDir, "server.cert.pem")
+		if err := p.ensureServerCert(); err != nil {
+			return errors.Annotate(err, "ensure server cert")
+		}
+
+		p.certRole = "client"
+		store, err := store.New("server", p.certRole, dataStorePath)
+		if err != nil {
+			return errors.Annotate(err, "create data store")
+		}
+		p.dataStore = store
 	}
-	p.DataStore = store
 
 	// when run as daemon, the home folder isn't set
 	if os.Getenv("HOME") == "" {
-		os.Setenv("HOME", p.WorkDir)
+		os.Setenv("HOME", p.workDir)
 	}
 
 	gob.Register(promise.NamedPromise{})
@@ -411,63 +420,33 @@ func (p *context) parseArguments(isClient bool) error {
 }
 
 //////////////////////////////////////////////////////////////////////////////////
-func (p *context) AddClientCert(clientID string, certPath string) error {
-	logging.Logger.Info("server: add client cert")
+func (p *context) AddCert(id string, certPath string) error {
+	logging.Logger.Infof("add %s cert", p.certRole)
 
-	if clientID == "" {
-		return errors.New("no client id provided")
+	if id == "" {
+		return errors.Errorf("no %s id provided", p.certRole)
 	}
 
 	if certPath == "" {
-		return errors.New("no client certificate path provided")
+		return errors.Errorf("no %s certificate path provided", p.certRole)
 	}
 
 	if !fileExists(certPath) {
-		return errors.New("client certificate file does not exist")
+		return errors.Errorf("%s certificate file does not exist", p.certRole)
 	}
 
-	return p.DataStore.StoreClientCert(clientID, certPath)
+	return p.dataStore.StoreCert(id, certPath)
 }
 
 //////////////////////////////////////////////////////////////////////////////////
-func (p *context) RemoveClientCert(clientID string) error {
-	logging.Logger.Info("server: remove client cert")
+func (p *context) RemoveCert(id string) error {
+	logging.Logger.Infof("remove %s cert", p.certRole)
 
-	if clientID == "" {
-		return errors.New("no client id provided")
+	if id == "" {
+		return errors.Errorf("no %s id provided", p.certRole)
 	}
 
-	return p.DataStore.RemoveClientCert(clientID)
-}
-
-//////////////////////////////////////////////////////////////////////////////////
-func (p *context) AddServerCert(serverID string, certPath string) error {
-	logging.Logger.Info("client: add server cert")
-
-	if serverID == "" {
-		return errors.New("no server id provided")
-	}
-
-	if certPath == "" {
-		return errors.New("no server certificate path provided")
-	}
-
-	if !fileExists(certPath) {
-		return errors.New("server certificate file does not exist")
-	}
-
-	return p.DataStore.StoreServerCert(serverID, certPath)
-}
-
-//////////////////////////////////////////////////////////////////////////////////
-func (p *context) RemoveServerCert(serverID string) error {
-	logging.Logger.Info("client: remove server cert")
-
-	if serverID == "" {
-		return errors.New("no server id provided")
-	}
-
-	return p.DataStore.RemoveServerCert(serverID)
+	return p.dataStore.RemoveCert(id)
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -482,21 +461,21 @@ func (p *context) SendPromise(tree promise.Promise) error {
 	cmd := RemoteCommand{
 		Data:        buf.Bytes(),
 		Stdout:      os.Stdout,
-		SendChannel: p.RemoteSender,
+		SendChannel: p.remoteSender,
 		Verbose:     p.Verbose,
 	}
 
 	logging.Logger.Info("send promise")
-	if err := p.Sender.Send(cmd); err != nil {
+	if err := p.sender.Send(cmd); err != nil {
 		return errors.Annotate(err, "send")
 	}
 
-	if err := p.Sender.Close(); err != nil {
+	if err := p.sender.Close(); err != nil {
 		return errors.Annotate(err, "close sender channel")
 	}
 
 	resp := server.CommandResponse{}
-	if err := p.Receiver.Receive(&resp); err != nil {
+	if err := p.receiver.Receive(&resp); err != nil {
 		return errors.Annotate(err, "receive")
 	}
 
@@ -507,14 +486,14 @@ func (p *context) SendPromise(tree promise.Promise) error {
 //////////////////////////////////////////////////////////////////////////////////
 func (p *context) ExecPromise(tree promise.Promise, verbose bool) error {
 	vars := promise.Variables{}
-	vars["input_dir"] = p.InputDir
-	vars["work_dir"] = p.WorkDir
+	vars["input_dir"] = p.inputDir
+	vars["work_dir"] = p.workDir
 	vars["executable"] = filepath.Clean(os.Args[0])
 
 	ctx := promise.Context{
 		ExecOutput: &bytes.Buffer{},
 		Vars:       vars,
-		Args:       p.AppCtx.Args(),
+		Args:       p.appCtx.Args(),
 		Env:        []string{},
 		Verbose:    verbose,
 		InDir:      "",
@@ -528,7 +507,7 @@ func (p *context) ExecPromise(tree promise.Promise, verbose bool) error {
 	logging.Logger.Infof("%d changes and %d tests executed in %s",
 		logging.Logger.Changes, logging.Logger.Tests, endtime.Sub(starttime))
 
-	writeRunLog(err, starttime, endtime, p.RunlogPath)
+	writeRunLog(err, starttime, endtime, p.runlogPath)
 	return err
 }
 

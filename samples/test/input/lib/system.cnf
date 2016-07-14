@@ -8,9 +8,30 @@
 
 (system update
     (and
+		(is debian)
         (change "sudo" "apt-get" "update")
         (change "sudo" "apt-get" "--yes" "upgrade")
         (change "sudo" "apt-get" "--yes" "dist-upgrade")
 		(change "sudo" "apt-get" "--yes" "autoclean")
+	)
+)
+
+(is debian
+	(or
+		(pipe
+			(test "uname" "-v")
+			(test "grep" "Debian")
+		)
+		(pipe
+			(test "uname" "-v")
+			(test "grep" "Ubuntu")
+		)
+	)	
+)
+
+(is fedora
+	(pipe
+		(test "uname" "-v")
+		(test "grep" "Fedora")
 	)
 )

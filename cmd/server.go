@@ -8,21 +8,8 @@ import (
 )
 
 func NewServerCommand() cli.Command {
-
 	return cli.Command{
 		Name: "server",
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name:   "runlog-path, r",
-				Usage:  "path to runlog",
-				EnvVar: "LLCONF_RUNLOG",
-			},
-			cli.BoolFlag{
-				Name:   "syslog, s",
-				Usage:  "output to syslog",
-				EnvVar: "LLCONF_SYSLOG",
-			},
-		},
 		Subcommands: []cli.Command{
 			{
 				Name: "run",
@@ -31,6 +18,7 @@ func NewServerCommand() cli.Command {
 					if err != nil {
 						return errors.Annotate(err, "new run context")
 					}
+					defer rCtx.Close()
 
 					if err := rCtx.CreateServer(); err != nil {
 						return errors.Annotate(err, "create server")
@@ -40,13 +28,13 @@ func NewServerCommand() cli.Command {
 				},
 			},
 			{
-				Name: "clientcert",
+				Name: "cert",
 				Subcommands: []cli.Command{
 					{
 						Name: "add",
 						Flags: []cli.Flag{
 							cli.StringFlag{
-								Name:  "client-id",
+								Name:  "id",
 								Usage: "the client-id the cert belongs to",
 							},
 							cli.StringFlag{
@@ -61,9 +49,9 @@ func NewServerCommand() cli.Command {
 							}
 							defer rCtx.Close()
 
-							clientID := ctx.String("client-id")
+							clientID := ctx.String("id")
 							path := ctx.String("path")
-							if err := rCtx.AddClientCert(clientID, path); err != nil {
+							if err := rCtx.AddCert(clientID, path); err != nil {
 								return errors.Annotate(err, "register client cert")
 							}
 
@@ -75,7 +63,7 @@ func NewServerCommand() cli.Command {
 						Name: "rm",
 						Flags: []cli.Flag{
 							cli.StringFlag{
-								Name:  "client-id",
+								Name:  "id",
 								Usage: "the client-id the cert belongs to",
 							},
 						},
@@ -86,8 +74,8 @@ func NewServerCommand() cli.Command {
 							}
 							defer rCtx.Close()
 
-							clientID := ctx.String("client-id")
-							if err := rCtx.RemoveClientCert(clientID); err != nil {
+							clientID := ctx.String("id")
+							if err := rCtx.RemoveCert(clientID); err != nil {
 								return errors.Annotate(err, "remove client cert")
 							}
 

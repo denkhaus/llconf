@@ -18,16 +18,6 @@ func NewClientCommand() cli.Command {
 				Usage:  "the folder containing input files",
 				EnvVar: "LLCONF_INPUT_FOLDER",
 			},
-			cli.BoolFlag{
-				Name:   "syslog, s",
-				Usage:  "output to syslog",
-				EnvVar: "LLCONF_SYSLOG",
-			},
-			cli.StringFlag{
-				Name:   "runlog-path, r",
-				Usage:  "path to the runlog",
-				EnvVar: "LLCONF_RUNLOG",
-			},
 			cli.StringFlag{
 				Name:   "promise, p",
 				Usage:  "the root promise name",
@@ -122,13 +112,13 @@ func NewClientCommand() cli.Command {
 				},
 			},
 			{
-				Name: "servercert",
+				Name: "cert",
 				Subcommands: []cli.Command{
 					{
 						Name: "add",
 						Flags: []cli.Flag{
 							cli.StringFlag{
-								Name:  "server-id",
+								Name:  "id",
 								Usage: "the server-id the cert belongs to",
 							},
 							cli.StringFlag{
@@ -137,15 +127,15 @@ func NewClientCommand() cli.Command {
 							},
 						},
 						Action: func(ctx *cli.Context) error {
-							rCtx, err := context.New(ctx, false)
+							rCtx, err := context.New(ctx, true)
 							if err != nil {
 								return errors.Annotate(err, "new run context")
 							}
 							defer rCtx.Close()
 
-							serverID := ctx.String("server-id")
+							serverID := ctx.String("id")
 							path := ctx.String("path")
-							if err := rCtx.AddServerCert(serverID, path); err != nil {
+							if err := rCtx.AddCert(serverID, path); err != nil {
 								return errors.Annotate(err, "add server cert")
 							}
 
@@ -157,19 +147,19 @@ func NewClientCommand() cli.Command {
 						Name: "rm",
 						Flags: []cli.Flag{
 							cli.StringFlag{
-								Name:  "server-id",
+								Name:  "id",
 								Usage: "the server-id the cert belongs to",
 							},
 						},
 						Action: func(ctx *cli.Context) error {
-							rCtx, err := context.New(ctx, false)
+							rCtx, err := context.New(ctx, true)
 							if err != nil {
 								return errors.Annotate(err, "new run context")
 							}
 							defer rCtx.Close()
 
-							serverID := ctx.String("server-id")
-							if err := rCtx.RemoveServerCert(serverID); err != nil {
+							serverID := ctx.String("id")
+							if err := rCtx.RemoveCert(serverID); err != nil {
 								return errors.Annotate(err, "remove server cert")
 							}
 
