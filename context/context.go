@@ -480,7 +480,7 @@ func (p *context) SendPromise(tree promise.Promise) error {
 	}
 
 	logging.Logger.Info(resp.Status)
-	return resp.Error
+	return errors.New(resp.Error)
 }
 
 //////////////////////////////////////////////////////////////////////////////////

@@ -32,16 +32,3 @@ func (s SetEnv) New(children []Promise, args []Argument) (Promise, error) {
 
 	return SetEnv{args[0], args[1], children[0]}, nil
 }
-
-//func (p SetEnv) Marshal(writer io.Writer) error {
-//	if err := p.Name.Marshal(writer); err != nil {
-//		return err
-//	}
-//	if err := p.Value.Marshal(writer); err != nil {
-//		return err
-//	}
-//	if err := p.Child.Marshal(writer); err != nil {
-//		return err
-//	}
-//	return nil
-//}

@@ -29,7 +29,7 @@ type RemoteCommand struct {
 //////////////////////////////////////////////////////////////////////////////////
 type CommandResponse struct {
 	Status string
-	Error  error
+	Error  string
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -119,7 +119,7 @@ func (p *Server) receiveLoop(receiver libchan.Receiver) error {
 		res := CommandResponse{}
 		err := p.redirectOutput(cmd.Stdout, func() error {
 			if err := p.OnPromiseReceived(pr, cmd.Verbose); err != nil {
-				res.Error = err
+				res.Error = err.Error()
 				res.Status = "execution error"
 				return err
 			} else {

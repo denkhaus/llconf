@@ -12,7 +12,7 @@
         (change "sudo" "apt-get" "update")
         (change "sudo" "apt-get" "--yes" "upgrade")
         (change "sudo" "apt-get" "--yes" "dist-upgrade")
-		(change "sudo" "apt-get" "--yes" "autoclean")
+		(change "sudo" "apt-get" "--yes" "autoremove")
 	)
 )
 

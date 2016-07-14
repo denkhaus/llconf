@@ -1,0 +1,46 @@
+
+(provision node	
+	(and
+		(system update)
+		(ensure hostname [var:hostname])
+		(locale ready)
+		(docker ready)
+		(installed "htop")	
+	)	
+)
+
+
+(locale ready
+	(and
+		(installed "locales")
+		(change "sudo" "dpkg-reconfigure" "locales")
+		(change "sudo" "locale-gen" "C.UTF-8")
+		(change "sudo" "update-locale" "LANG=C.UTF-8")		
+		(pipe
+			(change "echo" "en_US.UTF-8 UTF-8")
+			(change "sudo" "tee" "-a" "/etc/locale.gen")
+		)
+		(change "sudo" "locale-gen")		
+	)
+)
+
+(docker ready
+	(and
+		(setvar "docker-apt-list" "/etc/apt/sources.list.d/docker.list")
+		(change "sudo" "rm" "-rf" [var:docker-apt-list])
+		(pipe
+			(change "echo" "deb https://apt.dockerproject.org/repo ubuntu-trusty main")
+			(change "sudo" "tee" "-a" [var:docker-apt-list])
+		)
+		(change "sudo" "apt-key" "adv" 
+			"--keyserver" "hkp://p80.pool.sks-keyservers.net:80" 
+			"--recv-keys" "58118E89F3A912897C070ADBF76221572C52609D"
+		)
+		(change "sudo" "apt-get" "update" )
+		(installed "docker-engine")	
+	)	
+)
+
+
+
+

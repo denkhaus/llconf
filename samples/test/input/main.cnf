@@ -1,9 +1,4 @@
-(done
-	(and	
-		(installed "htop")
-		(installed "wget")
-		(ensure hostname "v999")		
-		(ssh ready)
-		(system update)		
-	)        
+(done	
+		(ensure hostname "lulu")	        
 )
+
