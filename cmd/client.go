@@ -3,6 +3,10 @@ package cmd
 import (
 	"time"
 
+	"golang.org/x/tools/godoc/util"
+
+	"github.com/howeyc/fsnotify"
+
 	"github.com/codegangsta/cli"
 	"github.com/denkhaus/llconf/context"
 	"github.com/denkhaus/llconf/logging"
@@ -85,25 +89,54 @@ func NewClientCommand() cli.Command {
 					}
 					defer rCtx.Close()
 
-					loop := make(chan int)
+					watcher, err := fsnotify.NewWatcher()
+					if err != nil {
+						return errors.Annotate(err, "new watcher")
+					}
+					defer watcher.Close()
+
+					if err := watcher.Watch(rCtx.InputDir); err != nil {
+						return errors.Annotate(err, "watch")
+					}
+
+					trigger := make(chan int)
+					errch := make(chan error)
+
+					go func() {
+						thr := util.NewThrottle(0.5, 1*time.Second)
+						for {
+							select {
+							case ev := <-watcher.Event:
+								logging.Logger.Infof("file changed: %v", ev.Name)
+								thr.Throttle()
+								trigger <- 0
+							case err := <-watcher.Error:
+								errch <- err
+							}
+						}
+					}()
 
 					for {
-						go func(q chan int) {
-							time.Sleep(time.Duration(rCtx.Interval) * time.Second)
-							q <- 0
-						}(loop)
 
-						tree, err := rCtx.CompilePromise()
-						if err != nil {
-							return errors.Annotate(err, "compile promise")
+						if tree, err := rCtx.CompilePromise(); err != nil {
+							logging.Logger.Error(errors.Annotate(err, "compile promise"))
+						} else {
+							if err := rCtx.CreateClient(); err != nil {
+								return errors.Annotate(err, "create client")
+							}
+							if err := rCtx.SendPromise(tree); err != nil {
+								return errors.Annotate(err, "send promise")
+							}
 						}
 
-						if err := rCtx.SendPromise(tree); err != nil {
-							return errors.Annotate(err, "send promise")
+						select {
+						case <-trigger:
+							continue
+						case err := <-watcher.Error:
+							return errors.Annotate(err, "watcher error")
 						}
-
-						<-loop
 					}
+
 					return nil
 				},
 			},

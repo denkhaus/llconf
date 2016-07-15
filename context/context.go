@@ -51,7 +51,7 @@ type context struct {
 	Interval           int
 	port               int
 	rootPromise        string
-	inputDir           string
+	InputDir           string
 	workDir            string
 	runlogPath         string
 	host               string
@@ -304,7 +304,7 @@ func (p *context) CreateClient() error {
 func (p *context) CompilePromise() (promise.Promise, error) {
 	logging.Logger.Info("compile promise")
 
-	promises, err := compiler.Compile(p.inputDir)
+	promises, err := compiler.Compile(p.InputDir)
 	if err != nil {
 		return nil, errors.Annotate(err, "compile promise")
 	}
@@ -327,21 +327,21 @@ func (p *context) parseArguments(isClient bool, needInput bool) error {
 	p.workDir = wd
 
 	if isClient && needInput {
-		p.inputDir = p.appCtx.GlobalString("input-folder")
+		p.InputDir = p.appCtx.GlobalString("input-folder")
 
-		if p.inputDir == "" {
-			p.inputDir = filepath.Join(p.workDir, "input")
+		if p.InputDir == "" {
+			p.InputDir = filepath.Join(p.workDir, "input")
 		} else {
-			if !filepath.IsAbs(p.inputDir) {
-				p.inputDir, err = filepath.Abs(p.inputDir)
+			if !filepath.IsAbs(p.InputDir) {
+				p.InputDir, err = filepath.Abs(p.InputDir)
 				if err != nil {
 					return errors.Annotate(err, "make input path absolute")
 				}
 			}
 		}
 
-		if !fileExists(p.inputDir) {
-			return errors.Errorf("input folder %q does not exist", p.inputDir)
+		if !fileExists(p.InputDir) {
+			return errors.Errorf("input folder %q does not exist", p.InputDir)
 		}
 	}
 
@@ -506,7 +506,7 @@ func (p *context) SendPromise(tree promise.Promise) error {
 //////////////////////////////////////////////////////////////////////////////////
 func (p *context) ExecPromise(tree promise.Promise, verbose bool) {
 	vars := promise.Variables{}
-	vars["input_dir"] = p.inputDir
+	vars["input_dir"] = p.InputDir
 	vars["work_dir"] = p.workDir
 	vars["executable"] = filepath.Clean(os.Args[0])
 
