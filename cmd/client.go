@@ -103,13 +103,15 @@ func NewClientCommand() cli.Command {
 					errch := make(chan error)
 
 					go func() {
-						thr := util.NewThrottle(0.5, 1*time.Second)
+						thr := util.NewThrottle(0.8, 1*time.Second)
 						for {
 							select {
 							case ev := <-watcher.Event:
-								logging.Logger.Infof("file changed: %v", ev.Name)
-								thr.Throttle()
-								trigger <- 0
+								if !thr.Triggered() {
+									logging.Logger.Infof("input file changed: %v", ev.Name)
+									thr.Throttle()
+									trigger <- 0
+								}
 							case err := <-watcher.Error:
 								errch <- err
 							}

@@ -5,7 +5,7 @@
 		(change "echo" "hallo denkhaus")			
 	)		
 )
-  
+       
 (self update
 	(and
 		(change "go" "get" "-u" "github.com/denkhaus/llconf")
