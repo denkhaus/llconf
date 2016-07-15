@@ -85,13 +85,13 @@ func NewClientCommand() cli.Command {
 					}
 					defer rCtx.Close()
 
-					quit := make(chan int)
+					loop := make(chan int)
 
 					for {
 						go func(q chan int) {
 							time.Sleep(time.Duration(rCtx.Interval) * time.Second)
 							q <- 0
-						}(quit)
+						}(loop)
 
 						tree, err := rCtx.CompilePromise()
 						if err != nil {
@@ -102,11 +102,8 @@ func NewClientCommand() cli.Command {
 							return errors.New("could not find any valid promises")
 						}
 
-						if !rCtx.ExecPromise(tree, rCtx.Verbose) {
-							return errors.New("exec error")
-						}
-
-						<-quit
+						rCtx.ExecPromise(tree, rCtx.Verbose)
+						<-loop
 					}
 					return nil
 				},

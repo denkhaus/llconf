@@ -38,7 +38,7 @@ type Server struct {
 	Host              string
 	Port              string
 	DataStore         *store.DataStore
-	OnPromiseReceived func(pr promise.Promise, verbose bool) bool
+	OnPromiseReceived func(pr promise.Promise, verbose bool)
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -118,13 +118,10 @@ func (p *Server) receiveLoop(receiver libchan.Receiver) error {
 
 		res := CommandResponse{}
 		p.redirectOutput(cmd.Stdout, func() {
-			if p.OnPromiseReceived(pr, cmd.Verbose) {
-				res.Status = "execution successfull"
-			} else {
-				res.Status = "execution error"
-			}
+			p.OnPromiseReceived(pr, cmd.Verbose)
 		})
 
+		res.Status = "execution successfull"
 		logging.Logger.Info("send response")
 		if err := cmd.SendChannel.Send(&res); err != nil {
 			return errors.Annotate(err, "send")

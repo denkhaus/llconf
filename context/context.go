@@ -501,7 +501,7 @@ func (p *context) SendPromise(tree promise.Promise) error {
 }
 
 //////////////////////////////////////////////////////////////////////////////////
-func (p *context) ExecPromise(tree promise.Promise, verbose bool) bool {
+func (p *context) ExecPromise(tree promise.Promise, verbose bool) {
 	vars := promise.Variables{}
 	vars["input_dir"] = p.inputDir
 	vars["work_dir"] = p.workDir
@@ -517,15 +517,15 @@ func (p *context) ExecPromise(tree promise.Promise, verbose bool) bool {
 	}
 
 	starttime := time.Now().Local()
-	success := tree.Eval([]promise.Constant{}, &ctx, "")
+	res := tree.Eval([]promise.Constant{}, &ctx, "")
 	endtime := time.Now().Local()
 
 	defer logging.Logger.Reset()
 	logging.Logger.Infof("%d changes and %d tests executed in %s",
 		logging.Logger.Changes, logging.Logger.Tests, endtime.Sub(starttime))
 
-	writeRunLog(success, starttime, endtime, p.runlogPath)
-	return success
+	writeRunLog(res, starttime, endtime, p.runlogPath)
+	return
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -536,13 +536,8 @@ func writeRunLog(success bool, starttime, endtime time.Time, path string) error 
 	tests := logging.Logger.Tests
 	duration := endtime.Sub(starttime)
 
-	if success {
-		output = fmt.Sprintf("successful, endtime=%d, duration=%f, c=%d, t=%d",
-			endtime.Unix(), duration.Seconds(), changes, tests)
-	} else {
-		output = fmt.Sprintf("error, endtime=%d, duration=%f, c=%d, t=%d -> %s",
-			endtime.Unix(), duration.Seconds(), changes, tests, success)
-	}
+	output = fmt.Sprintf("error, endtime=%d, duration=%f, c=%d, t=%d -> %s",
+		endtime.Unix(), duration.Seconds(), changes, tests, success)
 
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {

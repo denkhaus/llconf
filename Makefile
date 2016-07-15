@@ -1,10 +1,10 @@
 
 DOCKER_IMAGE		   := denkhaus/llconf
 
-all: build run
+all: build start
 
 ################################################################################
-run:		
+start:		
 	- docker rm -f llconf
 	docker run -d --name llconf -p 9954:9954 $(DOCKER_IMAGE)
 	docker cp ~/.llconf/cert/client.cert.pem llconf:/client.cert.pem
@@ -38,3 +38,11 @@ git:
 ################################################################################
 debug:
 	docker run -it --rm --entrypoint /bin/bash $(DOCKER_IMAGE) 
+
+################################################################################
+watch:
+	llconf client  -i ./test/input watch
+	
+################################################################################
+run:
+	llconf client  -i ./test/input run
