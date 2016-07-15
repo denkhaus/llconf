@@ -31,8 +31,10 @@ build: git
 ################################################################################
 git:
 	go install
-	git add -A && git commit -am "proceed"
-
+	git add -A 
+	git commit -am "proceed"
+	git push
+	
 ################################################################################
 debug:
 	docker run -it --rm --entrypoint /bin/bash $(DOCKER_IMAGE) 
