@@ -464,6 +464,9 @@ func (p *context) RemoveCert(id string) error {
 
 //////////////////////////////////////////////////////////////////////////////////
 func (p *context) SendPromise(tree promise.Promise) error {
+	if tree == nil {
+		return errors.New("no valid promises")
+	}
 
 	buf := bytes.Buffer{}
 	enc := gob.NewEncoder(&buf)
@@ -536,7 +539,7 @@ func writeRunLog(success bool, starttime, endtime time.Time, path string) error 
 	tests := logging.Logger.Tests
 	duration := endtime.Sub(starttime)
 
-	output = fmt.Sprintf("error, endtime=%d, duration=%f, c=%d, t=%d -> %s",
+	output = fmt.Sprintf("error, endtime=%d, duration=%f, c=%d, t=%d -> %t",
 		endtime.Unix(), duration.Seconds(), changes, tests, success)
 
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)

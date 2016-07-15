@@ -98,11 +98,10 @@ func NewClientCommand() cli.Command {
 							return errors.Annotate(err, "compile promise")
 						}
 
-						if tree == nil {
-							return errors.New("could not find any valid promises")
+						if err := rCtx.SendPromise(tree); err != nil {
+							return errors.Annotate(err, "send promise")
 						}
 
-						rCtx.ExecPromise(tree, rCtx.Verbose)
 						<-loop
 					}
 					return nil
