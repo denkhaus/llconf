@@ -23,8 +23,11 @@ func (p *stdLogger) Reset() {
 func init() {
 	log := &stdLogger{}
 	log.Logger = logrus.New()
-
+	fmt := log.Formatter.(*logrus.TextFormatter)
+	fmt.ForceColors = true
+	fmt.DisableTimestamp = true
 	log.Out = os.Stdout
+
 	Logger = log
 }
 
