@@ -26,7 +26,6 @@ import (
 
 	syslogger "github.com/Sirupsen/logrus/hooks/syslog"
 	"github.com/codegangsta/cli"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/denkhaus/llconf/compiler"
 	"github.com/denkhaus/llconf/logging"
 	"github.com/denkhaus/llconf/promise"
@@ -170,8 +169,8 @@ func (p *context) generateCert(privKeyPath string, certFilePath string) error {
 		},
 	}
 
-	template.DNSNames = append(template.DNSNames, "localhost")
-	template.EmailAddresses = append(template.EmailAddresses, "user@email.com")
+	//template.DNSNames = append(template.DNSNames, "localhost")
+	//template.EmailAddresses = append(template.EmailAddresses, "user@email.com")
 
 	privatekey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
@@ -519,8 +518,6 @@ func (p *context) ExecPromise(tree promise.Promise, verbose bool) {
 		Verbose:    verbose,
 		InDir:      "",
 	}
-
-	spew.Dump(ctx.Args)
 
 	starttime := time.Now().Local()
 	res := tree.Eval([]promise.Constant{}, &ctx, "")

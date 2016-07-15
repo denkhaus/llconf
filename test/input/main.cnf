@@ -1,7 +1,6 @@
 (done	
 	(and
-		(installed "htop")	
-		(docker ready)			 
+		(installed "htop")				 
 		(change "echo" "hallo denkhaus")			
 	)		
 )
