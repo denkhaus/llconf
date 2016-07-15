@@ -1,7 +1,8 @@
 (done	
 	(and
-		(installed "htop")		
-		(self update)		
+		(installed "htop")	
+		(docker ready)			
+			
 	)		
 )
 

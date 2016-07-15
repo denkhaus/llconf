@@ -23,10 +23,15 @@ push:
 	docker push $(DOCKER_IMAGE)
 
 ################################################################################
-build:	
+build: git
 	- docker rm -f llconf
 	- docker rmi -f $(DOCKER_IMAGE)
 	docker build -t $(DOCKER_IMAGE) .
+
+################################################################################
+git:
+	go install
+	git add -A && git commit -am "proceed"
 
 ################################################################################
 debug:

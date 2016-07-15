@@ -13,10 +13,10 @@ then
 	done
 	
 	echo "install client certificate"
-	llconf server cert add --id client --path $CLIENT_CERT
+	/go/bin/llconf server cert add --id client --path $CLIENT_CERT
 	rm -f $CLIENT_CERT
 	touch /initialized
 fi
 
 echo "startup server"
-llconf -H 0.0.0.0 server run
+/go/bin/llconf -H 0.0.0.0 server run
