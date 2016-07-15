@@ -1,13 +1,14 @@
 (done	
 	(and
-		(installed "htop")				 
+		(installed "curl")				 
 		(change "echo" "hallo denkhaus")			
+		
 	)		
 )
        
 (self update
 	(and
-		(change "go" "get" "-u" "github.com/denkhaus/llconf")
-		(restart "/go/bin/llconf")
+		(change "go" "get" "-u" "-v" "github.com/denkhaus/llconf")
+		(change "restart" "llconf")
 	)	
 )

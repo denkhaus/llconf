@@ -25,6 +25,7 @@ func init() {
 	log.Logger = logrus.New()
 	fmt := log.Formatter.(*logrus.TextFormatter)
 	fmt.ForceColors = true
+	fmt.DisableSorting = true
 	fmt.DisableTimestamp = true
 	log.Out = os.Stdout
 
