@@ -169,8 +169,12 @@ func (p *context) generateCert(privKeyPath string, certFilePath string) error {
 		},
 	}
 
-	//template.DNSNames = append(template.DNSNames, "localhost")
-	//template.EmailAddresses = append(template.EmailAddresses, "user@email.com")
+	hn, err := os.Hostname()
+	if err != nil {
+		return errors.Annotate(err, "get hostname")
+	}
+
+	template.DNSNames = append(template.DNSNames, hn)
 
 	privatekey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
