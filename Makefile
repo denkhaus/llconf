@@ -32,8 +32,8 @@ build: git
 git:
 	go install
 	git add -A 
-	git commit -am "proceed"
-	git push
+	- git commit -am "proceed"
+	- git push
 	
 ################################################################################
 debug:
