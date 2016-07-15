@@ -3,13 +3,11 @@ package cmd
 import (
 	"time"
 
-	"golang.org/x/tools/godoc/util"
-
-	"github.com/howeyc/fsnotify"
-
 	"github.com/codegangsta/cli"
 	"github.com/denkhaus/llconf/context"
 	"github.com/denkhaus/llconf/logging"
+	"github.com/denkhaus/llconf/util"
+	"github.com/howeyc/fsnotify"
 	"github.com/juju/errors"
 )
 
