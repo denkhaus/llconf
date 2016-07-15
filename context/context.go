@@ -514,7 +514,7 @@ func (p *context) ExecPromise(tree promise.Promise, verbose bool) {
 	ctx := promise.Context{
 		ExecOutput: &bytes.Buffer{},
 		Vars:       vars,
-		Args:       p.appCtx.Args(),
+		Args:       os.Args[1:],
 		Env:        []string{},
 		Verbose:    verbose,
 		InDir:      "",
