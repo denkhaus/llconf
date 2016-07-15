@@ -14,7 +14,7 @@ func NewServerCommand() cli.Command {
 			{
 				Name: "run",
 				Action: func(ctx *cli.Context) error {
-					rCtx, err := context.New(ctx, false)
+					rCtx, err := context.New(ctx, false, false)
 					if err != nil {
 						return errors.Annotate(err, "new run context")
 					}
@@ -43,7 +43,7 @@ func NewServerCommand() cli.Command {
 							},
 						},
 						Action: func(ctx *cli.Context) error {
-							rCtx, err := context.New(ctx, false)
+							rCtx, err := context.New(ctx, false, false)
 							if err != nil {
 								return errors.Annotate(err, "new run context")
 							}
@@ -68,7 +68,7 @@ func NewServerCommand() cli.Command {
 							},
 						},
 						Action: func(ctx *cli.Context) error {
-							rCtx, err := context.New(ctx, false)
+							rCtx, err := context.New(ctx, false, false)
 							if err != nil {
 								return errors.Annotate(err, "new run context")
 							}

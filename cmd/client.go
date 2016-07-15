@@ -29,7 +29,7 @@ func NewClientCommand() cli.Command {
 			{
 				Name: "run",
 				Action: func(ctx *cli.Context) error {
-					rCtx, err := context.New(ctx, true)
+					rCtx, err := context.New(ctx, true, true)
 					if err != nil {
 						return errors.Annotate(err, "new run context")
 					}
@@ -54,7 +54,7 @@ func NewClientCommand() cli.Command {
 			{
 				Name: "test",
 				Action: func(ctx *cli.Context) error {
-					rCtx, err := context.New(ctx, true)
+					rCtx, err := context.New(ctx, true, true)
 					if err != nil {
 						return errors.Annotate(err, "new run context")
 					}
@@ -79,7 +79,7 @@ func NewClientCommand() cli.Command {
 					},
 				},
 				Action: func(ctx *cli.Context) error {
-					rCtx, err := context.New(ctx, true)
+					rCtx, err := context.New(ctx, true, true)
 					if err != nil {
 						return errors.Annotate(err, "new run context")
 					}
@@ -127,7 +127,7 @@ func NewClientCommand() cli.Command {
 							},
 						},
 						Action: func(ctx *cli.Context) error {
-							rCtx, err := context.New(ctx, true)
+							rCtx, err := context.New(ctx, true, false)
 							if err != nil {
 								return errors.Annotate(err, "new run context")
 							}
@@ -152,7 +152,7 @@ func NewClientCommand() cli.Command {
 							},
 						},
 						Action: func(ctx *cli.Context) error {
-							rCtx, err := context.New(ctx, true)
+							rCtx, err := context.New(ctx, true, false)
 							if err != nil {
 								return errors.Annotate(err, "new run context")
 							}

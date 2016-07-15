@@ -69,9 +69,9 @@ type context struct {
 }
 
 //////////////////////////////////////////////////////////////////////////////////
-func New(ctx *cli.Context, isClient bool) (*context, error) {
+func New(ctx *cli.Context, isClient bool, needInput bool) (*context, error) {
 	rCtx := context{appCtx: ctx}
-	err := rCtx.parseArguments(isClient)
+	err := rCtx.parseArguments(isClient, needInput)
 	if err == nil {
 		go rCtx.signalHandler()
 	}
@@ -318,7 +318,7 @@ func (p *context) CompilePromise() (promise.Promise, error) {
 }
 
 //////////////////////////////////////////////////////////////////////////////////
-func (p *context) parseArguments(isClient bool) error {
+func (p *context) parseArguments(isClient bool, needInput bool) error {
 
 	wd, err := os.Getwd()
 	if err != nil {
@@ -326,7 +326,7 @@ func (p *context) parseArguments(isClient bool) error {
 	}
 	p.workDir = wd
 
-	if isClient {
+	if isClient && needInput {
 		p.inputDir = p.appCtx.GlobalString("input-folder")
 
 		if p.inputDir == "" {
