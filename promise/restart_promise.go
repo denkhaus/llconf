@@ -44,7 +44,6 @@ func (p RestartPromise) Eval(arguments []Constant, ctx *Context, stack string) b
 	}
 
 	exe := filepath.Clean(os.Args[0])
-
 	os.Rename(newexe, exe)
 	logging.Logger.Infof("restarted llconf: llconf %v", ctx.Args)
 	if _, err := p.restartLLConf(exe, ctx.Args, ctx.ExecOutput, ctx.ExecOutput); err != nil {

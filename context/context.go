@@ -26,6 +26,7 @@ import (
 
 	syslogger "github.com/Sirupsen/logrus/hooks/syslog"
 	"github.com/codegangsta/cli"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/denkhaus/llconf/compiler"
 	"github.com/denkhaus/llconf/logging"
 	"github.com/denkhaus/llconf/promise"
@@ -518,6 +519,8 @@ func (p *context) ExecPromise(tree promise.Promise, verbose bool) {
 		Verbose:    verbose,
 		InDir:      "",
 	}
+
+	spew.Dump(ctx.Args)
 
 	starttime := time.Now().Local()
 	res := tree.Eval([]promise.Constant{}, &ctx, "")
