@@ -38,7 +38,7 @@ type Server struct {
 	Host              string
 	Port              string
 	DataStore         *store.DataStore
-	OnPromiseReceived func(pr promise.Promise, verbose bool) error
+	OnPromiseReceived func(pr promise.Promise, verbose bool) bool
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -90,10 +90,10 @@ func (p *Server) ListenAndRun(cert *tls.Certificate) error {
 }
 
 //////////////////////////////////////////////////////////////////////////////////
-func (p *Server) redirectOutput(writer io.Writer, fn func() error) error {
+func (p *Server) redirectOutput(writer io.Writer, fn func()) {
 	defer logging.SetOutWriter(os.Stdout)
 	logging.SetOutWriter(writer)
-	return fn()
+	fn()
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -117,22 +117,13 @@ func (p *Server) receiveLoop(receiver libchan.Receiver) error {
 		}
 
 		res := CommandResponse{}
-		err := p.redirectOutput(cmd.Stdout, func() error {
-			if err := p.OnPromiseReceived(pr, cmd.Verbose); err != nil {
-				res.Error = err.Error()
-				res.Status = "execution error"
-				return err
-			} else {
+		p.redirectOutput(cmd.Stdout, func() {
+			if p.OnPromiseReceived(pr, cmd.Verbose) {
 				res.Status = "execution successfull"
-				return nil
+			} else {
+				res.Status = "execution error"
 			}
 		})
-
-		if err != nil {
-			logging.Logger.Error(err)
-		} else {
-			logging.Logger.Infof(res.Status)
-		}
 
 		logging.Logger.Info("send response")
 		if err := cmd.SendChannel.Send(&res); err != nil {

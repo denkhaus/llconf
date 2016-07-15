@@ -56,7 +56,7 @@ func (p ReadvarPromise) Desc(arguments []Constant) string {
 	return "(readvar " + strings.Join(args, ", ") + ")"
 }
 
-func (p ReadvarPromise) Eval(arguments []Constant, ctx *Context, stack string) error {
+func (p ReadvarPromise) Eval(arguments []Constant, ctx *Context, stack string) bool {
 	result := p.Exec.Eval(arguments, ctx, stack)
 
 	name := p.VarName.GetValue(arguments, &ctx.Vars)

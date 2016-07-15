@@ -4,7 +4,7 @@ import "bytes"
 
 type Promise interface {
 	Desc(arguments []Constant) string
-	Eval(arguments []Constant, ctx *Context, stack string) error
+	Eval(arguments []Constant, ctx *Context, stack string) bool
 	New(children []Promise, args []Argument) (Promise, error)
 }
 

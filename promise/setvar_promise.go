@@ -28,11 +28,11 @@ func (p SetvarPromise) New(children []Promise, args []Argument) (Promise, error)
 	return setvar, nil
 }
 
-func (p SetvarPromise) Eval(arguments []Constant, ctx *Context, stack string) error {
+func (p SetvarPromise) Eval(arguments []Constant, ctx *Context, stack string) bool {
 	name := p.VarName.GetValue(arguments, &ctx.Vars)
 	value := p.VarValue.GetValue(arguments, &ctx.Vars)
 	ctx.Vars[name] = value
-	return nil
+	return true
 }
 
 func (p SetvarPromise) Desc(arguments []Constant) string {

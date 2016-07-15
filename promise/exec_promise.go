@@ -145,10 +145,11 @@ func (p ExecPromise) processOutput(ctx *Context, cmd *exec.Cmd) error {
 	return nil
 }
 
-func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) error {
+func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool {
 	cmd, err := p.getCommand(arguments, ctx)
 	if err != nil {
-		return errors.Annotate(err, "get command")
+		logging.Logger.Error(errors.Annotate(err, "get command"))
+		return false
 	}
 
 	if ctx.Verbose || p.Type == ExecChange {
@@ -169,17 +170,20 @@ func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) erro
 	defer func() { quit <- true }()
 
 	if err := p.processOutput(ctx, cmd); err != nil {
-		return errors.Annotate(err, "process output")
+		logging.Logger.Error(errors.Annotate(err, "process output"))
+		return false
 	}
 	if err = cmd.Start(); err != nil {
-		return errors.Annotate(err, "cmd start")
+		logging.Logger.Error(errors.Annotate(err, "cmd start"))
+		return false
 	}
 	if err = cmd.Wait(); err != nil {
-		return errors.Annotate(err, "cmd wait")
+		logging.Logger.Error(errors.Annotate(err, "cmd wait"))
+		return false
 	}
 
 	p.Type.IncrementExecCounter()
-	return nil
+	return true
 }
 
 /////////////////////////////
@@ -216,7 +220,7 @@ func (p PipePromise) Desc(arguments []Constant) string {
 	return retval + ")"
 }
 
-func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) error {
+func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) bool {
 
 	quit := make(chan bool)
 	defer func() { quit <- true }()
@@ -238,7 +242,8 @@ func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) erro
 	for _, v := range p.Execs {
 		cmd, err := v.getCommand(arguments, ctx)
 		if err != nil {
-			return errors.Annotate(err, "get command")
+			logging.Logger.Error(errors.Annotate(err, "get command"))
+			return false
 		} else {
 			v.Type.IncrementExecCounter()
 		}
@@ -253,7 +258,8 @@ func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) erro
 	for i, command := range commands[:len(commands)-1] {
 		out, err := command.StdoutPipe()
 		if err != nil {
-			return errors.Annotate(err, "stdout pipe")
+			logging.Logger.Error(errors.Annotate(err, "stdout pipe"))
+			return false
 		}
 		command.Start()
 		commands[i+1].Stdin = out
@@ -277,5 +283,5 @@ func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) erro
 			logging.Logger.Info(ctx.ExecOutput.String())
 		}
 	}
-	return err
+	return (err == nil)
 }

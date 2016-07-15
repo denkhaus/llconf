@@ -31,7 +31,7 @@ func (p NamedPromise) Desc(arguments []Constant) string {
 	return fmt.Sprintf("(%s %s)", p.Name, p.Promise.Desc(parsed_arguments))
 }
 
-func (p NamedPromise) Eval(arguments []Constant, ctx *Context, stack string) error {
+func (p NamedPromise) Eval(arguments []Constant, ctx *Context, stack string) bool {
 	parsed_arguments := []Constant{}
 	for _, argument := range p.Arguments {
 		parsed_arguments = append(parsed_arguments, Constant(argument.GetValue(arguments, &ctx.Vars)))

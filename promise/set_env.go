@@ -12,7 +12,7 @@ func (s SetEnv) Desc(arguments []Constant) string {
 	return fmt.Sprintf("(setenv %s %s)", s.Name, s.Child.Desc(arguments))
 }
 
-func (s SetEnv) Eval(arguments []Constant, ctx *Context, stack string) error {
+func (s SetEnv) Eval(arguments []Constant, ctx *Context, stack string) bool {
 	name := s.Name.GetValue(arguments, &ctx.Vars)
 	value := s.Value.GetValue(arguments, &ctx.Vars)
 

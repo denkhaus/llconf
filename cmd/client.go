@@ -102,8 +102,8 @@ func NewClientCommand() cli.Command {
 							return errors.New("could not find any valid promises")
 						}
 
-						if err := rCtx.ExecPromise(tree, rCtx.Verbose); err != nil {
-							return errors.Annotate(err, "exec promise")
+						if !rCtx.ExecPromise(tree, rCtx.Verbose) {
+							return errors.New("exec error")
 						}
 
 						<-quit

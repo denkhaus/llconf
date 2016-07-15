@@ -1,31 +1,33 @@
 
-(installed
-	(and
-		(is debian)
-		(or
-        	(debian is package present [arg:0])
-        	(change "apt-get" "--force-yes" "--yes" "install" [arg:0])
-    	)
-	)    
+(installed	
+	(or
+       	(package present [arg:0])
+       	(change "apt-get" "--force-yes" "--yes" "install" [arg:0])
+   	)	    
 )
 
-(uninstalled
-	(and
-		(is debian)	
-		(or
-		   	(debian is package absent [arg:0])
-			(change "apt-get" "--yes" "purge" [arg:0])
-		)
-	)
+(uninstalled	
+	(or
+	   	(package absent [arg:0])
+		(change "apt-get" "--yes" "purge" [arg:0])
+	)	
 )
 
-(debian is package absent
+(package absent	
+		(debian package absent [arg:0])
+)
+
+(package present	
+		(debian package present [arg:0])
+)
+
+(debian package absent
 	(not
-		(debian is package present [arg:0])
+		(debian package present [arg:0])
 	)
 )
 
-(debian is package present
+(debian package present
 	(and
 		(is debian)
 		(pipe

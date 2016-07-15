@@ -36,10 +36,11 @@ func (p RestartPromise) Desc(arguments []Constant) string {
 	return "(restart " + strings.Join(args, ", ") + ")"
 }
 
-func (p RestartPromise) Eval(arguments []Constant, ctx *Context, stack string) error {
+func (p RestartPromise) Eval(arguments []Constant, ctx *Context, stack string) bool {
 	newexe := p.NewExe.GetValue(arguments, &ctx.Vars)
 	if _, err := os.Stat(newexe); err != nil {
-		return errors.Annotate(err, "stat")
+		logging.Logger.Error(errors.Annotate(err, "stat"))
+		return false
 	}
 
 	exe := filepath.Clean(os.Args[0])
@@ -47,11 +48,12 @@ func (p RestartPromise) Eval(arguments []Constant, ctx *Context, stack string) e
 	os.Rename(newexe, exe)
 	logging.Logger.Infof("restarted llconf: llconf %v", ctx.Args)
 	if _, err := p.restartLLConf(exe, ctx.Args, ctx.ExecOutput, ctx.ExecOutput); err != nil {
-		return errors.Annotate(err, "restart llconf")
+		logging.Logger.Error(errors.Annotate(err, "restart llconf"))
+		return false
 	}
 
 	os.Exit(0)
-	return nil
+	return true
 }
 
 func (p RestartPromise) restartLLConf(exe string, args []string, stdout, stderr io.Writer) (*exec.Cmd, error) {

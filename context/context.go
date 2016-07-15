@@ -327,12 +327,21 @@ func (p *context) parseArguments(isClient bool) error {
 	p.workDir = wd
 
 	if isClient {
-		p.inputDir = p.appCtx.String("input-folder")
+		p.inputDir = p.appCtx.GlobalString("input-folder")
+
 		if p.inputDir == "" {
 			p.inputDir = filepath.Join(p.workDir, "input")
+		} else {
+			if !filepath.IsAbs(p.inputDir) {
+				p.inputDir, err = filepath.Abs(p.inputDir)
+				if err != nil {
+					return errors.Annotate(err, "make input path absolute")
+				}
+			}
 		}
-		if err := os.MkdirAll(p.inputDir, 0755); err != nil {
-			return errors.Annotate(err, "create input dir")
+
+		if !fileExists(p.inputDir) {
+			return errors.Errorf("input folder %q does not exist", p.inputDir)
 		}
 	}
 
@@ -492,7 +501,7 @@ func (p *context) SendPromise(tree promise.Promise) error {
 }
 
 //////////////////////////////////////////////////////////////////////////////////
-func (p *context) ExecPromise(tree promise.Promise, verbose bool) error {
+func (p *context) ExecPromise(tree promise.Promise, verbose bool) bool {
 	vars := promise.Variables{}
 	vars["input_dir"] = p.inputDir
 	vars["work_dir"] = p.workDir
@@ -508,31 +517,31 @@ func (p *context) ExecPromise(tree promise.Promise, verbose bool) error {
 	}
 
 	starttime := time.Now().Local()
-	err := tree.Eval([]promise.Constant{}, &ctx, "")
+	success := tree.Eval([]promise.Constant{}, &ctx, "")
 	endtime := time.Now().Local()
 
 	defer logging.Logger.Reset()
 	logging.Logger.Infof("%d changes and %d tests executed in %s",
 		logging.Logger.Changes, logging.Logger.Tests, endtime.Sub(starttime))
 
-	writeRunLog(err, starttime, endtime, p.runlogPath)
-	return err
+	writeRunLog(success, starttime, endtime, p.runlogPath)
+	return success
 }
 
 //////////////////////////////////////////////////////////////////////////////////
-func writeRunLog(err error, starttime, endtime time.Time, path string) error {
+func writeRunLog(success bool, starttime, endtime time.Time, path string) error {
 	var output string
 
 	changes := logging.Logger.Changes
 	tests := logging.Logger.Tests
 	duration := endtime.Sub(starttime)
 
-	if err != nil {
-		output = fmt.Sprintf("error, endtime=%d, duration=%f, c=%d, t=%d -> %s",
-			endtime.Unix(), duration.Seconds(), changes, tests, err)
-	} else {
+	if success {
 		output = fmt.Sprintf("successful, endtime=%d, duration=%f, c=%d, t=%d",
 			endtime.Unix(), duration.Seconds(), changes, tests)
+	} else {
+		output = fmt.Sprintf("error, endtime=%d, duration=%f, c=%d, t=%d -> %s",
+			endtime.Unix(), duration.Seconds(), changes, tests, success)
 	}
 
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)

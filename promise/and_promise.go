@@ -26,11 +26,11 @@ func (p AndPromise) Desc(arguments []Constant) string {
 	return "(and" + promises + ")"
 }
 
-func (p AndPromise) Eval(arguments []Constant, ctx *Context, stack string) error {
+func (p AndPromise) Eval(arguments []Constant, ctx *Context, stack string) bool {
 	for _, v := range p.Promises {
-		if err := v.Eval(arguments, ctx, stack); err != nil {
-			return errors.Annotate(err, "eval")
+		if !v.Eval(arguments, ctx, stack) {
+			return false
 		}
 	}
-	return nil
+	return true
 }

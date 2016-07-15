@@ -8,6 +8,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/denkhaus/llconf/logging"
 	"github.com/juju/errors"
 )
 
@@ -32,7 +33,7 @@ func (t TemplatePromise) Desc(arguments []Constant) string {
 		t.Output)
 }
 
-func (t TemplatePromise) Eval(arguments []Constant, ctx *Context, stack string) error {
+func (t TemplatePromise) Eval(arguments []Constant, ctx *Context, stack string) bool {
 	replacer := strings.NewReplacer("'", "\"")
 	json_input := replacer.Replace(t.JsonInput.GetValue(arguments, &ctx.Vars))
 	template_file := t.TemplateFile.GetValue(arguments, &ctx.Vars)
@@ -40,25 +41,29 @@ func (t TemplatePromise) Eval(arguments []Constant, ctx *Context, stack string) 
 
 	var input interface{}
 	if err := json.Unmarshal([]byte(json_input), &input); err != nil {
-		return errors.Annotate(err, "unmarshal")
+		logging.Logger.Error(errors.Annotate(err, "unmarshal"))
+		return false
 	}
 
 	tmpl, err := template.ParseFiles(template_file)
 	if err != nil {
-		return errors.Annotate(err, "parse files")
+		logging.Logger.Error(errors.Annotate(err, "parse files"))
+		return false
 	}
 
 	fo, err := os.Create(output)
 	if err != nil {
-		return errors.Annotate(err, "create output file")
+		logging.Logger.Error(errors.Annotate(err, "create output file"))
+		return false
 	}
 	defer fo.Close()
 
 	bfo := bufio.NewWriter(fo)
 	if err := tmpl.Execute(bfo, input); err != nil {
-		return errors.Annotate(err, "exec template")
+		logging.Logger.Error(errors.Annotate(err, "exec template"))
+		return false
 	}
 
 	bfo.Flush()
-	return nil
+	return true
 }

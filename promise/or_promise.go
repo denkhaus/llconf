@@ -26,11 +26,11 @@ func (p OrPromise) Desc(arguments []Constant) string {
 	return "(or" + promises + ")"
 }
 
-func (p OrPromise) Eval(arguments []Constant, ctx *Context, stack string) error {
+func (p OrPromise) Eval(arguments []Constant, ctx *Context, stack string) bool {
 	for _, v := range p.Promises {
-		if err := v.Eval(arguments, ctx, stack); err == nil {
-			return err
+		if v.Eval(arguments, ctx, stack) {
+			return true
 		}
 	}
-	return errors.New("or promise not fulfilled")
+	return false
 }

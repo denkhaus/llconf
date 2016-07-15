@@ -22,10 +22,10 @@ func (p NotPromise) Desc(arguments []Constant) string {
 	return "(not " + p.Promise.Desc(arguments) + ")"
 }
 
-func (p NotPromise) Eval(arguments []Constant, ctx *Context, stack string) error {
-	if err := p.Promise.Eval(arguments, ctx, stack); err != nil {
-		return nil
+func (p NotPromise) Eval(arguments []Constant, ctx *Context, stack string) bool {
+	if p.Promise.Eval(arguments, ctx, stack) {
+		return false
 	}
 
-	return errors.New("not promise not fulfilled")
+	return true
 }
