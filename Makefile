@@ -26,7 +26,7 @@ push:
 build: git
 	- docker rm -f llconf
 	- docker rmi -f $(DOCKER_IMAGE)
-	docker build -t $(DOCKER_IMAGE) .
+	docker build -t $(DOCKER_IMAGE) docker/
 
 ################################################################################
 git:
