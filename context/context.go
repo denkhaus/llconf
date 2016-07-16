@@ -346,9 +346,11 @@ func (p *context) parseArguments(isClient bool, needInput bool) error {
 		}
 
 		if !fileExists(p.InputDir) {
-			logging.Logger.Warnf("input folder %q does not exist: use pwd", p.InputDir)
+			logging.Logger.Warnf("input folder %q does not exist", p.InputDir)
 			p.InputDir = p.workDir
 		}
+
+		logging.Logger.Infof("use input @ %q", p.InputDir)
 	}
 
 	p.runlogPath = p.appCtx.GlobalString("runlog-path")
@@ -393,6 +395,11 @@ func (p *context) parseArguments(isClient bool, needInput bool) error {
 		if err := os.MkdirAll(p.LibDir, 0755); err != nil {
 			return errors.Annotate(err, "create lib dir")
 		}
+
+		if needInput {
+			logging.Logger.Infof("use library @ %q", p.LibDir)
+		}
+
 		p.clientPrivKeyPath = path.Join(certDir, "client.privkey.pem")
 		p.clientCertFilePath = path.Join(certDir, "client.cert.pem")
 		if err := p.ensureClientCert(); err != nil {
