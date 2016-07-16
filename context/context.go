@@ -51,6 +51,7 @@ type context struct {
 	Interval           int
 	port               int
 	rootPromise        string
+	LibDir             string
 	InputDir           string
 	workDir            string
 	runlogPath         string
@@ -308,7 +309,7 @@ func (p *context) CreateClient() error {
 func (p *context) CompilePromise() (promise.Promise, error) {
 	logging.Logger.Info("compile promise")
 
-	promises, err := compiler.Compile(p.InputDir)
+	promises, err := compiler.Compile(p.LibDir, p.InputDir)
 	if err != nil {
 		return nil, errors.Annotate(err, "compile promise")
 	}
@@ -334,7 +335,7 @@ func (p *context) parseArguments(isClient bool, needInput bool) error {
 		p.InputDir = p.appCtx.GlobalString("input-folder")
 
 		if p.InputDir == "" {
-			p.InputDir = filepath.Join(p.workDir, "input")
+			p.InputDir = p.workDir
 		} else {
 			if !filepath.IsAbs(p.InputDir) {
 				p.InputDir, err = filepath.Abs(p.InputDir)
@@ -345,7 +346,8 @@ func (p *context) parseArguments(isClient bool, needInput bool) error {
 		}
 
 		if !fileExists(p.InputDir) {
-			return errors.Errorf("input folder %q does not exist", p.InputDir)
+			logging.Logger.Warnf("input folder %q does not exist: use pwd", p.InputDir)
+			p.InputDir = p.workDir
 		}
 	}
 
@@ -371,22 +373,26 @@ func (p *context) parseArguments(isClient bool, needInput bool) error {
 		return errors.Annotate(err, "get current user")
 	}
 
-	p.settingsDir = path.Join(usr.HomeDir, "/.llconf")
+	p.settingsDir = path.Join(usr.HomeDir, ".llconf")
 	if err := os.MkdirAll(p.settingsDir, 0755); err != nil {
 		return errors.Annotate(err, "create settings dir")
 	}
 
-	certDir := path.Join(usr.HomeDir, "/.llconf/cert")
+	certDir := path.Join(p.settingsDir, "cert")
 	if err := os.MkdirAll(certDir, 0700); err != nil {
 		return errors.Annotate(err, "create cert dir")
 	}
 
-	dataStorePath := path.Join(usr.HomeDir, "/.llconf/store")
+	dataStorePath := path.Join(p.settingsDir, "store")
 	if err := os.MkdirAll(dataStorePath, 0700); err != nil {
 		return errors.Annotate(err, "create datastore dir")
 	}
 
 	if isClient {
+		p.LibDir = path.Join(p.settingsDir, "lib")
+		if err := os.MkdirAll(p.LibDir, 0755); err != nil {
+			return errors.Annotate(err, "create lib dir")
+		}
 		p.clientPrivKeyPath = path.Join(certDir, "client.privkey.pem")
 		p.clientCertFilePath = path.Join(certDir, "client.cert.pem")
 		if err := p.ensureClientCert(); err != nil {
@@ -510,7 +516,6 @@ func (p *context) SendPromise(tree promise.Promise) error {
 //////////////////////////////////////////////////////////////////////////////////
 func (p *context) ExecPromise(tree promise.Promise, verbose bool) {
 	vars := promise.Variables{}
-	vars["input_dir"] = p.InputDir
 	vars["work_dir"] = p.workDir
 	vars["executable"] = filepath.Clean(os.Args[0])
 

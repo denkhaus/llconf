@@ -1,22 +1,31 @@
 package compiler
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/denkhaus/llconf/compiler/parser"
+	"github.com/denkhaus/llconf/logging"
 	"github.com/denkhaus/llconf/promise"
+	"github.com/juju/errors"
 )
 
-type FolderReader struct {
-}
-
-func Compile(folder string) (map[string]promise.Promise, error) {
+func Compile(folders ...string) (map[string]promise.Promise, error) {
+	wg := &sync.WaitGroup{}
 	ch := make(chan string)
-	go listFiles(folder, "cnf", ch)
+
+	for _, folder := range folders {
+		wg.Add(1)
+		go listFiles(folder, "cnf", ch, wg)
+	}
+
+	go func() {
+		wg.Wait()
+		close(ch)
+	}()
 
 	inputs := []parser.Input{}
 
@@ -33,8 +42,8 @@ func Compile(folder string) (map[string]promise.Promise, error) {
 	return parser.Parse(inputs)
 }
 
-func listFiles(folder, suffix string, filename chan<- string) {
-	defer close(filename)
+func listFiles(folder, suffix string, filename chan<- string, wg *sync.WaitGroup) {
+	defer wg.Done()
 
 	err := filepath.Walk(folder, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -47,6 +56,6 @@ func listFiles(folder, suffix string, filename chan<- string) {
 	})
 
 	if err != nil {
-		fmt.Printf(err.Error())
+		logging.Logger.Error(errors.Annotate(err, "walk files"))
 	}
 }
