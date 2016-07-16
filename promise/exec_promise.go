@@ -163,7 +163,7 @@ func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 		case <-quit:
 			return
 		case <-time.After(time.Duration(5) * time.Minute):
-			logging.Logger.Error(stack, " has been running for 5 minutes")
+			logging.Logger.Warn(stack, " has been running for 5 minutes")
 		}
 	}(quit)
 
@@ -230,7 +230,7 @@ func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 		case <-quit:
 			return
 		case <-time.After(time.Duration(5) * time.Minute):
-			logging.Logger.Error(stack, " has been running for 5 minutes")
+			logging.Logger.Warn(stack, " has been running for 5 minutes")
 		}
 	}(quit)
 

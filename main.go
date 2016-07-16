@@ -11,7 +11,9 @@ import (
 func main() {
 	app := cli.NewApp()
 	app.Name = "llconf"
+	app.EnableBashCompletion = true
 	app.Usage = "A batch execution tool for remote or local use."
+
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:   "host, H",

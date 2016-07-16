@@ -99,12 +99,17 @@ func (p *context) signalHandler() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan,
 		syscall.SIGTERM,
-		syscall.SIGQUIT)
+		syscall.SIGINT)
 
-	<-sigChan
+	sig := <-sigChan
+	signal.Stop(sigChan)
+	logging.Logger.Infof("%s signal received", sig.String())
 
 	if err := p.Close(); err != nil {
 		logging.Logger.Error(errors.Annotate(err, "close context"))
+		os.Exit(1)
+	} else {
+		os.Exit(0)
 	}
 }
 
