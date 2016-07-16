@@ -23,6 +23,8 @@ var builtins = map[string]promise.Promise{
 	"readvar":  promise.ReadvarPromise{},
 	"template": promise.TemplatePromise{},
 	"restart":  promise.RestartPromise{},
+	"true":     promise.TruePromise{},
+	"false":    promise.FalsePromise{},
 }
 
 type UnresolvedPromise struct {
