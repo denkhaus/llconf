@@ -38,7 +38,7 @@ type Server struct {
 	Host              string
 	Port              string
 	DataStore         *store.DataStore
-	OnPromiseReceived func(pr promise.Promise, verbose bool)
+	OnPromiseReceived func(pr promise.Promise, verbose bool) error
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -90,10 +90,10 @@ func (p *Server) ListenAndRun(cert *tls.Certificate) error {
 }
 
 //////////////////////////////////////////////////////////////////////////////////
-func (p *Server) redirectOutput(writer io.Writer, fn func()) {
+func (p *Server) redirectOutput(writer io.Writer, fn func() error) error {
 	defer logging.SetOutWriter(os.Stdout)
 	logging.SetOutWriter(writer)
-	fn()
+	return fn()
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -116,12 +116,19 @@ func (p *Server) receiveLoop(receiver libchan.Receiver) error {
 			return errors.Annotate(err, "decode")
 		}
 
-		res := CommandResponse{}
-		p.redirectOutput(cmd.Stdout, func() {
-			p.OnPromiseReceived(pr, cmd.Verbose)
+		res := CommandResponse{
+			Status: "execution successfull",
+		}
+
+		err := p.redirectOutput(cmd.Stdout, func() error {
+			return p.OnPromiseReceived(pr, cmd.Verbose)
 		})
 
-		res.Status = "execution successfull"
+		if err != nil {
+			res.Error = err.Error()
+			res.Status = "execution aborted with error"
+		}
+
 		logging.Logger.Info("send response")
 		if err := cmd.SendChannel.Send(&res); err != nil {
 			return errors.Annotate(err, "send")

@@ -24,19 +24,9 @@ func newClientCertCommand() cli.Command {
 					},
 				},
 				Action: func(ctx *cli.Context) error {
-					rCtx, err := context.New(ctx, true, false)
-					if err != nil {
-						return errors.Annotate(err, "new run context")
+					if err := clientCertAdd(ctx); err != nil {
+						logging.Logger.Error(err)
 					}
-					defer rCtx.Close()
-
-					serverID := ctx.String("id")
-					path := ctx.String("path")
-					if err := rCtx.AddCert(serverID, path); err != nil {
-						return errors.Annotate(err, "add server cert")
-					}
-
-					logging.Logger.Infof("server certificate for id %q successfull saved", serverID)
 					return nil
 				},
 			},
@@ -49,21 +39,45 @@ func newClientCertCommand() cli.Command {
 					},
 				},
 				Action: func(ctx *cli.Context) error {
-					rCtx, err := context.New(ctx, true, false)
-					if err != nil {
-						return errors.Annotate(err, "new run context")
+					if err := clientCertRm(ctx); err != nil {
+						logging.Logger.Error(err)
 					}
-					defer rCtx.Close()
-
-					serverID := ctx.String("id")
-					if err := rCtx.RemoveCert(serverID); err != nil {
-						return errors.Annotate(err, "remove server cert")
-					}
-
-					logging.Logger.Infof("server certificate for id %q successfull removed", serverID)
 					return nil
 				},
 			},
 		},
 	}
+}
+
+func clientCertAdd(ctx *cli.Context) error {
+	rCtx, err := context.New(ctx, true, false)
+	if err != nil {
+		return errors.Annotate(err, "new run context")
+	}
+	defer rCtx.Close()
+
+	serverID := ctx.String("id")
+	path := ctx.String("path")
+	if err := rCtx.AddCert(serverID, path); err != nil {
+		return errors.Annotate(err, "add server cert")
+	}
+
+	logging.Logger.Infof("server certificate for id %q successfull saved", serverID)
+	return nil
+}
+
+func clientCertRm(ctx *cli.Context) error {
+	rCtx, err := context.New(ctx, true, false)
+	if err != nil {
+		return errors.Annotate(err, "new run context")
+	}
+	defer rCtx.Close()
+
+	serverID := ctx.String("id")
+	if err := rCtx.RemoveCert(serverID); err != nil {
+		return errors.Annotate(err, "remove server cert")
+	}
+
+	logging.Logger.Infof("server certificate for id %q successfull removed", serverID)
+	return nil
 }

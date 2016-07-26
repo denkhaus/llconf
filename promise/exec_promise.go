@@ -64,7 +64,6 @@ func (p ExecPromise) New(children []Promise, args []Argument) (Promise, error) {
 }
 
 func (p ExecPromise) getCommand(arguments []Constant, ctx *Context) (*exec.Cmd, error) {
-
 	cmd := p.Arguments[0].GetValue(arguments, &ctx.Vars)
 	largs := p.Arguments[1:]
 
@@ -145,8 +144,7 @@ func (p ExecPromise) processOutput(ctx *Context, cmd *exec.Cmd) error {
 func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool {
 	cmd, err := p.getCommand(arguments, ctx)
 	if err != nil {
-		logging.Logger.Error(errors.Annotate(err, "get command"))
-		return false
+		panic(errors.Annotate(err, "get command"))
 	}
 
 	if ctx.Verbose || p.Type == ExecChange {
@@ -155,6 +153,8 @@ func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 	}
 
 	quit := make(chan bool)
+	defer func() { quit <- true }()
+
 	go func(quit chan bool) {
 		select {
 		case <-quit:
@@ -164,18 +164,13 @@ func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 		}
 	}(quit)
 
-	defer func() { quit <- true }()
-
 	if err := p.processOutput(ctx, cmd); err != nil {
-		logging.Logger.Error(errors.Annotate(err, "process output"))
-		return false
+		panic(errors.Annotate(err, "process output"))
 	}
-	if err = cmd.Start(); err != nil {
-		logging.Logger.Error(errors.Annotate(err, "cmd start"))
-		return false
+	if err := cmd.Start(); err != nil {
+		panic(errors.Annotate(err, "cmd start"))
 	}
-	if err = cmd.Wait(); err != nil {
-		logging.Logger.Error(errors.Annotate(err, "cmd wait"))
+	if err := cmd.Wait(); err != nil {
 		return false
 	}
 
@@ -239,11 +234,10 @@ func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 	for _, v := range p.Execs {
 		cmd, err := v.getCommand(arguments, ctx)
 		if err != nil {
-			logging.Logger.Error(errors.Annotate(err, "get command"))
-			return false
-		} else {
-			v.Type.IncrementExecCounter()
+			panic(errors.Annotate(err, "get command"))
 		}
+
+		v.Type.IncrementExecCounter()
 		cstrings = append(cstrings, "["+v.Type.String()+"] "+strings.Join(cmd.Args, " "))
 		commands = append(commands, cmd)
 
@@ -255,10 +249,13 @@ func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 	for i, command := range commands[:len(commands)-1] {
 		out, err := command.StdoutPipe()
 		if err != nil {
-			logging.Logger.Error(errors.Annotate(err, "stdout pipe"))
-			return false
+			panic(errors.Annotate(err, "stdout pipe"))
 		}
-		command.Start()
+
+		if err := command.Start(); err != nil {
+			panic(errors.Annotate(err, "start"))
+		}
+
 		commands[i+1].Stdin = out
 	}
 
@@ -268,7 +265,7 @@ func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 	last_cmd.Stdout = ctx.ExecOutput
 	last_cmd.Stderr = ctx.ExecOutput
 
-	err := last_cmd.Run()
+	cmdError := last_cmd.Run()
 	for _, command := range commands[:len(commands)-1] {
 		command.Wait()
 	}
@@ -280,7 +277,7 @@ func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 			logging.Logger.Info(ctx.ExecOutput.String())
 		}
 	}
-	return (err == nil)
+	return (cmdError == nil)
 }
 
 func sanitizeInDir(ctx *Context) error {
@@ -288,7 +285,7 @@ func sanitizeInDir(ctx *Context) error {
 		return nil
 	}
 
-	if ctx.InDir[:2] == "~/" {
+	if len(ctx.InDir) >= 2 && ctx.InDir[:2] == "~/" {
 		usr, err := user.Current()
 		if err != nil {
 			return errors.Annotate(err, "get current user")

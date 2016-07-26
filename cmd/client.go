@@ -24,6 +24,7 @@ func NewClientCommand() cli.Command {
 			newClientWatchCommand(),
 			newClientCertCommand(),
 		},
+		
 	}
 
 	return cd

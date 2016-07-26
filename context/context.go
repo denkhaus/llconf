@@ -528,7 +528,14 @@ func (p *context) SendPromise(tree promise.Promise) error {
 }
 
 //////////////////////////////////////////////////////////////////////////////////
-func (p *context) ExecPromise(tree promise.Promise, verbose bool) {
+func (p *context) ExecPromise(tree promise.Promise, verbose bool) (err error) {
+	defer func() {
+		e := recover()
+		if e != nil {
+			err = e.(error)
+		}
+	}()
+
 	vars := promise.Variables{}
 	vars["work_dir"] = p.workDir
 	vars["executable"] = filepath.Clean(os.Args[0])
