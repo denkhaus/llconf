@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"strings"
 	"time"
@@ -72,29 +73,18 @@ func (p ExecPromise) getCommand(arguments []Constant, ctx *Context) (*exec.Cmd, 
 		args = append(args, argument.GetValue(arguments, &ctx.Vars))
 	}
 
-	abs, err := filepath.Abs(ctx.InDir)
-	if err != nil {
-		return nil, errors.Annotate(err, "make indir path absolute")
+	if err := sanitizeInDir(ctx); err != nil {
+		return nil, errors.Annotate(err, "sanitize indir")
 	}
-	ctx.InDir = abs
 
-	// use (in_dir) for command lookup
-	newcmd, err := exec.LookPath(ctx.InDir + "/" + cmd)
-	if ctx.InDir != "" {
-		if err == nil {
-			cmd = newcmd
-		}
-	}
 	command := exec.Command(cmd, args...)
 
 	if ctx.InDir != "" {
-		fs, err := os.Stat(ctx.InDir)
-		if err != nil {
-			return nil, errors.Errorf("(indir) error: %s", err.Error())
+		// use (in_dir) for command lookup
+		if newcmd, err := exec.LookPath(filepath.Join(ctx.InDir, cmd)); err == nil {
+			command = exec.Command(newcmd, args...)
 		}
-		if !fs.IsDir() {
-			return nil, errors.Errorf("(indir) not a directory: %s", ctx.InDir)
-		}
+
 		command.Dir = ctx.InDir
 	} else {
 		command.Dir = os.Getenv("PWD")
@@ -291,4 +281,30 @@ func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 		}
 	}
 	return (err == nil)
+}
+
+func sanitizeInDir(ctx *Context) error {
+	if ctx.InDir[:2] == "~/" {
+		usr, err := user.Current()
+		if err != nil {
+			return errors.Annotate(err, "get current user")
+		}
+		ctx.InDir = filepath.Join(usr.HomeDir, ctx.InDir[2:])
+	}
+
+	abs, err := filepath.Abs(ctx.InDir)
+	if err != nil {
+		return errors.Annotate(err, "make indir path absolute")
+	}
+	ctx.InDir = abs
+
+	fs, err := os.Stat(ctx.InDir)
+	if err != nil {
+		return errors.Errorf("(indir) error for path %q: %s", ctx.InDir, err)
+	}
+
+	if !fs.IsDir() {
+		return errors.Errorf("(indir) not a directory: %q", ctx.InDir)
+	}
+	return nil
 }
