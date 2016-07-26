@@ -284,6 +284,10 @@ func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 }
 
 func sanitizeInDir(ctx *Context) error {
+	if ctx.InDir == "" {
+		return nil
+	}
+
 	if ctx.InDir[:2] == "~/" {
 		usr, err := user.Current()
 		if err != nil {
