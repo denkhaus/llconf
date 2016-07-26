@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -70,6 +71,12 @@ func (p ExecPromise) getCommand(arguments []Constant, ctx *Context) (*exec.Cmd, 
 	for _, argument := range largs {
 		args = append(args, argument.GetValue(arguments, &ctx.Vars))
 	}
+
+	abs, err := filepath.Abs(ctx.InDir)
+	if err != nil {
+		return nil, errors.Annotate(err, "make indir path absolute")
+	}
+	ctx.InDir = abs
 
 	// use (in_dir) for command lookup
 	newcmd, err := exec.LookPath(ctx.InDir + "/" + cmd)

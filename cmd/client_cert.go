@@ -16,7 +16,7 @@ func newClientCertCommand() cli.Command {
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:  "id",
-						Usage: "the server-id the cert belongs to",
+						Usage: "the id the cert belongs to",
 					},
 					cli.StringFlag{
 						Name:  "path",
@@ -45,7 +45,7 @@ func newClientCertCommand() cli.Command {
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:  "id",
-						Usage: "the server-id the cert belongs to",
+						Usage: "the id the cert belongs to",
 					},
 				},
 				Action: func(ctx *cli.Context) error {
