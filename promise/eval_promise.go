@@ -1,6 +1,12 @@
 package promise
 
-import "github.com/juju/errors"
+import (
+	"fmt"
+
+	"github.com/denkhaus/llconf/logging"
+	"github.com/denkhaus/llconf/util"
+	"github.com/juju/errors"
+)
 
 //////////////////////////////////////////////////////////////////////////////////
 type EvalPromise struct {
@@ -27,13 +33,14 @@ func (p EvalPromise) New(children []Promise, args []Argument) (Promise, error) {
 
 //////////////////////////////////////////////////////////////////////////////////
 func (p EvalPromise) compilePromise(ctx *Context, inputPath, rootPromise string) (Promise, error) {
+	logging.Logger.Info("compile eval promise")
 
 	libDir, ok := ctx.Vars["lib_dir"]
 	if !ok {
 		return nil, errors.New("(eval) library dir is not defined")
 	}
 
-	if !fileExists(libDir) {
+	if !util.FileExists(libDir) {
 		return nil, errors.Errorf("(eval) library dir %q is not present", libDir)
 	}
 
@@ -52,7 +59,7 @@ func (p EvalPromise) compilePromise(ctx *Context, inputPath, rootPromise string)
 
 //////////////////////////////////////////////////////////////////////////////////
 func (p EvalPromise) Desc(arguments []Constant) string {
-	return "(eval \"" + p.RootPromise.String() + "\" \"" + p.InputPath.String() + "\" )"
+	return fmt.Sprintf("(eval %q %q )", p.RootPromise.String(), p.InputPath.String())
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -64,7 +71,7 @@ func (p EvalPromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 		panic(errors.Errorf("(eval) root promise %q is undefined", rootPromise))
 	}
 
-	if !fileExists(inputPath) {
+	if !util.FileExists(inputPath) {
 		panic(errors.Errorf("(eval) input path %q does not exist", inputPath))
 	}
 

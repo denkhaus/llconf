@@ -7,6 +7,7 @@ import (
 	"github.com/juju/errors"
 )
 
+////////////////////////////////////////////////////////////////////////////////
 func newServerRunCommand() cli.Command {
 	return cli.Command{
 		Name: "run",
@@ -19,6 +20,7 @@ func newServerRunCommand() cli.Command {
 	}
 }
 
+////////////////////////////////////////////////////////////////////////////////
 func serverRun(ctx *cli.Context) error {
 	rCtx, err := context.New(ctx, false, false)
 	if err != nil {
@@ -26,8 +28,8 @@ func serverRun(ctx *cli.Context) error {
 	}
 	defer rCtx.Close()
 
-	if err := rCtx.CreateServer(); err != nil {
-		return errors.Annotate(err, "create server")
+	if err := rCtx.StartServer(); err != nil {
+		return errors.Annotate(err, "start server")
 	}
 
 	return nil

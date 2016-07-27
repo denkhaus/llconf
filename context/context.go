@@ -31,9 +31,11 @@ import (
 	"github.com/denkhaus/llconf/promise"
 	"github.com/denkhaus/llconf/server"
 	"github.com/denkhaus/llconf/store"
+	"github.com/denkhaus/llconf/util"
 	"github.com/docker/libchan"
 	"github.com/docker/libchan/spdy"
 	"github.com/juju/errors"
+	"github.com/rcrowley/goagain"
 )
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -48,7 +50,6 @@ type RemoteCommand struct {
 type context struct {
 	Verbose            bool
 	useSyslog          bool
-	Interval           int
 	port               int
 	rootPromise        string
 	LibDir             string
@@ -73,7 +74,8 @@ type context struct {
 func New(ctx *cli.Context, isClient bool, needInput bool) (*context, error) {
 	rCtx := context{appCtx: ctx}
 	err := rCtx.parseArguments(isClient, needInput)
-	if err == nil {
+	if err == nil && isClient {
+		// only in client mode, since server has its own signal handling
 		go rCtx.signalHandler()
 	}
 
@@ -129,8 +131,8 @@ func (p *context) upgradeLogging() error {
 
 //////////////////////////////////////////////////////////////////////////////////
 func (p *context) ensureClientCert() error {
-	if fileExists(p.clientPrivKeyPath) &&
-		fileExists(p.clientCertFilePath) {
+	if util.FileExists(p.clientPrivKeyPath) &&
+		util.FileExists(p.clientCertFilePath) {
 		return nil
 	}
 
@@ -140,8 +142,8 @@ func (p *context) ensureClientCert() error {
 
 //////////////////////////////////////////////////////////////////////////////////
 func (p *context) ensureServerCert() error {
-	if fileExists(p.serverPrivKeyPath) &&
-		fileExists(p.serverCertFilePath) {
+	if util.FileExists(p.serverPrivKeyPath) &&
+		util.FileExists(p.serverCertFilePath) {
 		return nil
 	}
 
@@ -218,18 +220,45 @@ func (p *context) generateCert(privKeyPath string, certFilePath string) error {
 }
 
 //////////////////////////////////////////////////////////////////////////////////
-func (p *context) CreateServer() error {
-	cert, err := p.loadServerCert()
+func (p *context) StartServer() error {
+	srv := server.New(p.host, p.port, p.dataStore, p.ExecPromise)
+
+	list, err := goagain.Listener()
 	if err != nil {
-		return errors.Annotate(err, "load server cert")
+		cert, err := p.loadServerCert()
+		if err != nil {
+			return errors.Annotate(err, "load server cert")
+		}
+
+		if err := srv.CreateListenerAndRun(cert); err != nil {
+			return errors.Annotate(err, "create listener")
+		}
+	} else {
+		if err := srv.ReuseListenerAndRun(list); err != nil {
+			return errors.Annotate(err, "reuse listener")
+		}
+		// Kill the parent, now that the child has started successfully.
+		if err := goagain.Kill(); nil != err {
+			return errors.Annotate(err, "kill parent")
+		}
 	}
 
-	srv := server.New(p.host, p.port, p.dataStore)
-	srv.OnPromiseReceived = p.ExecPromise
-
-	if err := srv.ListenAndRun(cert); err != nil {
-		return errors.Annotate(err, "server listen")
+	if !srv.Alive() {
+		if err := srv.LastError(); err != nil {
+			return errors.Annotate(err, "server died")
+		}
 	}
+
+	// Block the main goroutine awaiting signals.
+	if _, err := goagain.Wait(srv.Listener()); nil != err {
+		return errors.Annotate(err, "goagain wait")
+	}
+
+	if err := srv.Close(); nil != err {
+		return errors.Annotate(err, "server close")
+	}
+
+	time.Sleep(1 * time.Second)
 
 	return nil
 }
@@ -350,7 +379,7 @@ func (p *context) parseArguments(isClient bool, needInput bool) error {
 			}
 		}
 
-		if !fileExists(p.InputDir) {
+		if !util.FileExists(p.InputDir) {
 			logging.Logger.Warnf("input folder %q does not exist", p.InputDir)
 			p.InputDir = p.workDir
 		}
@@ -368,7 +397,6 @@ func (p *context) parseArguments(isClient bool, needInput bool) error {
 	p.Verbose = p.appCtx.GlobalBool("verbose")
 	p.host = p.appCtx.GlobalString("host")
 	p.port = p.appCtx.GlobalInt("port")
-	p.Interval = p.appCtx.Int("interval")
 
 	p.useSyslog = p.appCtx.GlobalBool("syslog")
 	if err := p.upgradeLogging(); err != nil {
@@ -468,7 +496,7 @@ func (p *context) AddCert(id string, certPath string) error {
 		return errors.Errorf("no %s certificate path provided", p.certRole)
 	}
 
-	if !fileExists(certPath) {
+	if !util.FileExists(certPath) {
 		return errors.Errorf("%s certificate file does not exist", p.certRole)
 	}
 
@@ -588,13 +616,4 @@ func writeRunLog(success bool, starttime, endtime time.Time, path string) error 
 	}
 
 	return nil
-}
-
-//////////////////////////////////////////////////////////////////////////////////
-func fileExists(filePath string) bool {
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		return false
-	}
-
-	return true
 }

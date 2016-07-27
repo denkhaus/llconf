@@ -4,11 +4,11 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"syscall"
 
 	"github.com/denkhaus/llconf/logging"
+	"github.com/denkhaus/llconf/util"
 	"github.com/juju/errors"
 )
 
@@ -37,17 +37,24 @@ func (p RestartPromise) Desc(arguments []Constant) string {
 }
 
 func (p RestartPromise) Eval(arguments []Constant, ctx *Context, stack string) bool {
-	newexe := p.NewExe.GetValue(arguments, &ctx.Vars)
-	if _, err := os.Stat(newexe); err != nil {
-		logging.Logger.Error(errors.Annotate(err, "stat"))
-		return false
+	newExe := p.NewExe.GetValue(arguments, &ctx.Vars)
+	if !util.FileExists(newExe) {
+		panic(errors.Errorf("(restart) new executable %q is not present", newExe))
 	}
 
-	exe := filepath.Clean(os.Args[0])
-	os.Rename(newexe, exe)
+	oldExe, ok := ctx.Vars["executable"]
+	if !ok {
+		panic(errors.Errorf("(restart) context var \"executable\" is not defined"))
+	}
 
-	logging.Logger.Infof("restarted llconf: llconf %v", ctx.Args)
-	if _, err := p.restartLLConf(exe, ctx.Args, ctx.ExecOutput, ctx.ExecOutput); err != nil {
+	if oldExe != newExe {
+		if err := os.Rename(newExe, oldExe); err != nil {
+			panic(errors.Annotatef(err, "(restart) mv %q to %q", newExe, oldExe))
+		}
+	}
+
+	logging.Logger.Infof("restarting llconf: llconf %v", ctx.Args)
+	if _, err := p.restartLLConf(oldExe, ctx.Args, ctx.ExecOutput, ctx.ExecOutput); err != nil {
 		logging.Logger.Error(errors.Annotate(err, "restart llconf"))
 		return false
 	}
