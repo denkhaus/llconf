@@ -25,6 +25,7 @@ var builtins = map[string]promise.Promise{
 	"restart":  promise.RestartPromise{},
 	"true":     promise.TruePromise{},
 	"false":    promise.FalsePromise{},
+	"eval":     promise.EvalPromise{},
 }
 
 type UnresolvedPromise struct {

@@ -1,6 +1,10 @@
 package promise
 
-import "bytes"
+import (
+	"bytes"
+)
+
+type compileFunc func(folders ...string) (map[string]Promise, error)
 
 type Promise interface {
 	Desc(arguments []Constant) string
@@ -14,6 +18,7 @@ type Argument interface {
 }
 
 type Context struct {
+	Compile    compileFunc
 	ExecOutput *bytes.Buffer
 	Vars       Variables
 	Args       []string

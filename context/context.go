@@ -395,15 +395,14 @@ func (p *context) parseArguments(isClient bool, needInput bool) error {
 		return errors.Annotate(err, "create datastore dir")
 	}
 
-	if isClient {
-		p.LibDir = path.Join(p.settingsDir, "lib")
-		if err := os.MkdirAll(p.LibDir, 0755); err != nil {
-			return errors.Annotate(err, "create lib dir")
-		}
+	p.LibDir = path.Join(p.settingsDir, "lib")
+	if err := os.MkdirAll(p.LibDir, 0755); err != nil {
+		return errors.Annotate(err, "create lib dir")
+	}
 
-		if needInput {
-			logging.Logger.Infof("use library @ %q", p.LibDir)
-		}
+	logging.Logger.Infof("use library @ %q", p.LibDir)
+
+	if isClient {
 
 		p.clientPrivKeyPath = path.Join(certDir, "client.privkey.pem")
 		p.clientCertFilePath = path.Join(certDir, "client.cert.pem")
@@ -445,6 +444,7 @@ func (p *context) parseArguments(isClient bool, needInput bool) error {
 	gob.Register(promise.FalsePromise{})
 	gob.Register(promise.NotPromise{})
 	gob.Register(promise.PipePromise{})
+	gob.Register(promise.EvalPromise{})
 	gob.Register(promise.ArgGetter{})
 	gob.Register(promise.JoinArgument{})
 	gob.Register(promise.InDir{})
@@ -538,10 +538,13 @@ func (p *context) ExecPromise(tree promise.Promise, verbose bool) (err error) {
 
 	vars := promise.Variables{}
 	vars["work_dir"] = p.workDir
+	vars["settings_dir"] = p.settingsDir
+	vars["lib_dir"] = p.LibDir
 	vars["executable"] = filepath.Clean(os.Args[0])
 
 	ctx := promise.Context{
 		ExecOutput: &bytes.Buffer{},
+		Compile:    compiler.Compile,
 		Vars:       vars,
 		Args:       os.Args[1:],
 		Env:        []string{},
