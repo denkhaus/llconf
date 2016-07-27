@@ -73,6 +73,9 @@ func (p EvalPromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 		panic(errors.Annotatef(err, "(eval) compile promise"))
 	}
 
-	res := promise.Eval([]Constant{}, ctx, "")
+	copyied_ctx := *ctx
+	copyied_ctx.InDir = inputPath
+	res := promise.Eval([]Constant{}, &copyied_ctx, "")
+
 	return res
 }
