@@ -8,6 +8,7 @@ import (
 	"github.com/juju/errors"
 )
 
+////////////////////////////////////////////////////////////////////////////////
 func sanitizeInDir(ctx *Context) error {
 	if ctx.InDir == "" {
 		return nil
@@ -38,6 +39,7 @@ func sanitizeInDir(ctx *Context) error {
 	return nil
 }
 
+////////////////////////////////////////////////////////////////////////////////
 func fileExists(path string) bool {
 	if _, err := os.Stat(path); err != nil &&
 		os.IsNotExist(err) {

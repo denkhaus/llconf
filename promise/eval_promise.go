@@ -30,7 +30,11 @@ func (p EvalPromise) compilePromise(ctx *Context, inputPath, rootPromise string)
 
 	libDir, ok := ctx.Vars["lib_dir"]
 	if !ok {
-		return nil, errors.New("context: library dir is not defined")
+		return nil, errors.New("(eval) library dir is not defined")
+	}
+
+	if !fileExists(libDir) {
+		return nil, errors.Errorf("(eval) library dir %q is not present", libDir)
 	}
 
 	promises, err := ctx.Compile(libDir, inputPath)
@@ -57,8 +61,9 @@ func (p EvalPromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 	inputPath := p.InputPath.GetValue(arguments, &ctx.Vars)
 
 	if rootPromise == "" {
-		panic(errors.New("(eval) root promise is undefined"))
+		panic(errors.Errorf("(eval) root promise %q is undefined", rootPromise))
 	}
+
 	if !fileExists(inputPath) {
 		panic(errors.Errorf("(eval) input path %q does not exist", inputPath))
 	}
