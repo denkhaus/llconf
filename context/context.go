@@ -596,6 +596,7 @@ func (p *context) ExecPromise(tree promise.Promise, verbose bool) (err error) {
 	}()
 
 	vars := promise.Variables{}
+
 	vars["work_dir"] = p.workDir
 	vars["settings_dir"] = p.settingsDir
 	vars["lib_dir"] = p.LibDir

@@ -58,8 +58,9 @@ func (p RestartPromise) Eval(arguments []Constant, ctx *Context, stack string) b
 	}
 
 	ownPid := os.Getpid()
-	logging.Logger.Infof("restarting llconf: llconf %v", ctx.Args)
-	logging.Logger.Info("sending signal", syscall.SIGUSR2, "to process", ownPid)
+
+	logging.Logger.Infof("restarting llconf : llconf %v", ctx.Args)
+	logging.Logger.Infof("sending signal %q to process %d", syscall.SIGUSR2, ownPid)
 	// send ourselves a syscall.SIGUSR2 signal to restart
 	syscall.Kill(ownPid, syscall.SIGUSR2)
 	return true
