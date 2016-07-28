@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/codegangsta/cli"
@@ -12,7 +13,8 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "llconf"
 	app.EnableBashCompletion = true
-	app.Usage = "A batch execution tool for remote or local use."
+	app.Version = fmt.Sprintf("%s-%s", AppVersion, Revision)
+	app.Usage = "A batch execution tool for remote and local use."
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
@@ -37,6 +39,10 @@ func main() {
 			Usage:  "enable debug output",
 			EnvVar: "LLCONF_DEBUG",
 		},
+		cli.BoolFlag{
+			Name:  "revision",
+			Usage: "Print revision",
+		},
 		cli.StringFlag{
 			Name:   "runlog-path, r",
 			Usage:  "path to runlog",
@@ -52,6 +58,16 @@ func main() {
 	app.Commands = []cli.Command{
 		cmd.NewClientCommand(),
 		cmd.NewServerCommand(),
+	}
+
+	app.Action = func(ctx *cli.Context) error {
+		if ctx.GlobalBool("revision") {
+			fmt.Println(Revision)
+		} else {
+			cli.ShowAppHelp(ctx)
+		}
+
+		return nil
 	}
 
 	if err := app.Run(os.Args); err != nil {

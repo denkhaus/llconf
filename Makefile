@@ -1,10 +1,16 @@
+SHA 				= $(shell git rev-parse --short HEAD)
+DOCKER_IMAGE		= denkhaus/llconf
+BUILD_VERSION 		:= $(shell date -u +%y-%m-%d-%H-%M-%S)
+CURRENT_VERSION		= $(shell llconf -v)
+BUILD_TARGET		= bin/llconf
 
-DOCKER_IMAGE		   := denkhaus/llconf
-
-all: build start
+all: build git-post
 
 ################################################################################
-start:		
+start-docker: build-docker start-docker
+
+################################################################################
+start-docker:		
 	- docker rm -f llconf
 	docker run -d --name llconf -p 9954:9954 $(DOCKER_IMAGE)
 	docker cp ~/.llconf/cert/client.cert.pem llconf:/client.cert.pem
@@ -19,21 +25,22 @@ start:
 	docker logs -f llconf
 
 ################################################################################
-push:
+push-container:
 	docker push $(DOCKER_IMAGE)
 
 ################################################################################
-build: git
+build-docker: push-git
 	- docker rm -f llconf
 	- docker rmi -f $(DOCKER_IMAGE)
 	docker build -t $(DOCKER_IMAGE) docker/
 
 ################################################################################
-git:
-	go install
-	git add -A 
-	- git commit -am "proceed"
-	- git push
+git-pre:
+	- git add -A && git commit -am "$(BUILD_VERSION)"	
+
+################################################################################
+git-post:
+	git push origin master	
 	
 ################################################################################
 debug:
@@ -46,3 +53,13 @@ watch:
 ################################################################################
 run:
 	llconf client  -i ./test/input run
+
+################################################################################
+build: git-pre
+	@echo "\n\n################# ---->  build $(BUILD_TARGET)"
+	@go build -o $(BUILD_TARGET) \
+		-ldflags "-w -s \
+		-X main.Revision=$(SHA) \
+		-X main.AppVersion=$(VERSION)"	
+	@mv $(BUILD_TARGET) $(GOBIN)
+	@echo "current build: $(shell llconf -v)"
