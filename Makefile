@@ -1,10 +1,15 @@
 SHA 				= $(shell git rev-parse --short HEAD)
 BUILD_VERSION 		= $(shell date -u +%y-%m-%d-%H-%M-%S)
 BUILD_TARGET		= bin/llconf
+
+CURRENT_VERSION    := $(shell llconf -v)
+CURRENT_REVISION   := $(shell llconf --revision)
+
 LIB_REPO_PATH		= ~/.llconf/lib
 DOCKER_IMAGE		= denkhaus/llconf
 
-all: build git-post
+################################################################################
+all: build git-post update-lib
 
 ################################################################################
 start-docker: build-docker start-docker
@@ -65,12 +70,12 @@ build: git-pre
 		-X main.AppVersion=$(BUILD_VERSION)"	
 	@echo "\n################# ---->  deploy $(BUILD_TARGET)"
 	@mv $(BUILD_TARGET) $(GOBIN)
-	@echo "current build: $(shell llconf -v)"
+	@echo "current build version: $(CURRENT_VERSION)"
 
 
 ################################################################################
 update-lib:
-	cd $(LIB_REPO_PATH) && echo "$(shell llconf --revision)" > .llconv_rev
+	cd $(LIB_REPO_PATH) && echo $(CURRENT_REVISION) > .llconv_rev
 
 
 
