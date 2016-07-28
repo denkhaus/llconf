@@ -1,8 +1,7 @@
 SHA 				= $(shell git rev-parse --short HEAD)
-DOCKER_IMAGE		= denkhaus/llconf
 BUILD_VERSION 		:= $(shell date -u +%y-%m-%d-%H-%M-%S)
-CURRENT_VERSION		= $(shell llconf -v)
 BUILD_TARGET		= bin/llconf
+DOCKER_IMAGE		= denkhaus/llconf
 
 all: build git-post
 
@@ -62,7 +61,7 @@ build: git-pre
 	@go build -o $(BUILD_TARGET) \
 		-ldflags "-w -s \
 		-X main.Revision=$(SHA) \
-		-X main.AppVersion=$(VERSION)"	
+		-X main.AppVersion=$(BUILD_VERSION)"	
 	@echo "\n\n################# ---->  deploy $(BUILD_TARGET)"
 	@mv $(BUILD_TARGET) $(GOBIN)
 	@echo "current build: $(shell llconf -v)"
