@@ -75,6 +75,7 @@ build: git-pre
 
 ################################################################################
 update-lib:
+	@echo "current build version: $(CURRENT_VERSION)"
 	cd $(LIB_REPO_PATH) && echo $(CURRENT_REVISION) > .llconv_rev
 
 
