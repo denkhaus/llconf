@@ -70,13 +70,13 @@ build: git-pre
 		-X main.AppVersion=$(BUILD_VERSION)"	
 	@echo "\n################# ---->  deploy $(BUILD_TARGET)"
 	@mv $(BUILD_TARGET) $(GOBIN)
-	@echo "current build version: $(CURRENT_VERSION)"
-
 
 ################################################################################
-update-lib:
-	@echo "current build version: $(CURRENT_VERSION)"
-	cd $(LIB_REPO_PATH) && echo $(CURRENT_REVISION) > .llconv_rev
+update-lib:	
+	cd $(LIB_REPO_PATH) && \
+	echo $(CURRENT_REVISION) > .llconv_rev && \
+	git add -A && git commit -am "update current rev: $(CURRENT_REVISION)" && \
+	git push origin master	
 
 
 
