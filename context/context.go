@@ -26,6 +26,7 @@ import (
 
 	syslogger "github.com/Sirupsen/logrus/hooks/syslog"
 	"github.com/codegangsta/cli"
+	"github.com/denkhaus/goagain"
 	"github.com/denkhaus/llconf/compiler"
 	"github.com/denkhaus/llconf/logging"
 	"github.com/denkhaus/llconf/promise"
@@ -35,7 +36,6 @@ import (
 	"github.com/docker/libchan"
 	"github.com/docker/libchan/spdy"
 	"github.com/juju/errors"
-	"github.com/rcrowley/goagain"
 )
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -50,6 +50,7 @@ type RemoteCommand struct {
 type context struct {
 	Verbose            bool
 	useSyslog          bool
+	noRedirect         bool
 	port               int
 	rootPromise        string
 	LibDir             string
@@ -73,10 +74,11 @@ type context struct {
 //////////////////////////////////////////////////////////////////////////////////
 func New(ctx *cli.Context, isClient bool, needInput bool) (*context, error) {
 	rCtx := context{appCtx: ctx}
+
 	err := rCtx.parseArguments(isClient, needInput)
 	if err == nil && isClient {
 		// only in client mode, since server has its own signal handling
-		go rCtx.signalHandler()
+		go rCtx.clientSignalHandler()
 	}
 
 	return &rCtx, err
@@ -84,20 +86,21 @@ func New(ctx *cli.Context, isClient bool, needInput bool) (*context, error) {
 
 //////////////////////////////////////////////////////////////////////////////////
 func (p *context) Close() error {
-	logging.Logger.Debug("close context")
+	logging.Logger.Debug("context: close")
 
 	if p.dataStore != nil {
-		err := p.dataStore.Close()
-		if err == nil {
-			logging.Logger.Info("datastore closed")
+		if err := p.dataStore.Close(); err != nil {
+			return errors.Annotate(err, "close datastore")
 		}
-		return err
+
+		logging.Logger.Info("datastore closed")
+		p.dataStore = nil
 	}
 	return nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-func (p *context) signalHandler() {
+func (p *context) clientSignalHandler() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan,
 		syscall.SIGTERM,
@@ -120,7 +123,7 @@ func (p *context) upgradeLogging() error {
 	if p.useSyslog {
 		hook, err := syslogger.NewSyslogHook("", "", syslog.LOG_INFO, "")
 		if err != nil {
-			return err
+			return errors.Annotate(err, "syslog hook")
 		}
 
 		logging.Logger.Hooks.Add(hook)
@@ -221,23 +224,41 @@ func (p *context) generateCert(privKeyPath string, certFilePath string) error {
 
 //////////////////////////////////////////////////////////////////////////////////
 func (p *context) StartServer() error {
-	srv := server.New(p.host, p.port, p.dataStore, p.ExecPromise)
+	logging.Logger.Debug("context: start server")
+	srv := server.New(p.host, p.port, p.dataStore, p.ExecPromise, p.noRedirect)
 
-	list, err := goagain.Listener()
-	if err != nil {
-		cert, err := p.loadServerCert()
-		if err != nil {
-			return errors.Annotate(err, "load server cert")
+	goagain.SetLogger(logging.Logger)
+
+	// close context before forking a new process,
+	// that cannot startup, because datastore is locked
+	goagain.OnBeforeSIGUSR2 = func(l net.Listener) error {
+		if err := p.Close(); err != nil {
+			return errors.Annotate(err, "close context before forking")
 		}
+		return nil
+	}
+
+	cert, err := p.loadServerCert()
+	if err != nil {
+		return errors.Annotate(err, "load server cert")
+	}
+
+	logging.Logger.Debug("context: try to get used listener")
+	list, err := goagain.Listener()
+
+	if err != nil {
+		logging.Logger.Debug("context: start with new listener")
 
 		if err := srv.CreateListenerAndRun(cert); err != nil {
 			return errors.Annotate(err, "create listener")
 		}
 	} else {
-		if err := srv.ReuseListenerAndRun(list); err != nil {
+		logging.Logger.Debugf("context: reuse listener from parent process for %s", list.Addr())
+		if err := srv.ReuseListenerAndRun(list, cert); err != nil {
 			return errors.Annotate(err, "reuse listener")
 		}
-		// Kill the parent, now that the child has started successfully.
+
+		logging.Logger.Debug("context: kill parent process")
 		if err := goagain.Kill(); nil != err {
 			return errors.Annotate(err, "kill parent")
 		}
@@ -247,10 +268,12 @@ func (p *context) StartServer() error {
 		if err := srv.LastError(); err != nil {
 			return errors.Annotate(err, "server died")
 		}
+
+		return nil
 	}
 
-	// Block the main goroutine awaiting signals.
-	if _, err := goagain.Wait(srv.Listener()); nil != err {
+	logging.Logger.Debug("context: wait for signals")
+	if _, err := goagain.Wait(srv.ListenerTCP()); nil != err {
 		return errors.Annotate(err, "goagain wait")
 	}
 
@@ -259,12 +282,13 @@ func (p *context) StartServer() error {
 	}
 
 	time.Sleep(1 * time.Second)
-
 	return nil
 }
 
 //////////////////////////////////////////////////////////////////////////////////
 func (p *context) loadServerCert() (*tls.Certificate, error) {
+	logging.Logger.Debug("context: load server certificates")
+
 	if _, err := os.Stat(p.serverCertFilePath); os.IsNotExist(err) {
 		return nil, errors.New("tls cert file not found")
 	}
@@ -445,6 +469,8 @@ func (p *context) parseArguments(isClient bool, needInput bool) error {
 		}
 		p.dataStore = store
 	} else {
+
+		p.noRedirect = p.appCtx.Bool("no-redirect")
 		p.serverPrivKeyPath = path.Join(certDir, "server.privkey.pem")
 		p.serverCertFilePath = path.Join(certDir, "server.cert.pem")
 		if err := p.ensureServerCert(); err != nil {
@@ -560,7 +586,12 @@ func (p *context) ExecPromise(tree promise.Promise, verbose bool) (err error) {
 	defer func() {
 		e := recover()
 		if e != nil {
-			err = e.(error)
+			// return only own panicing but repanic otherwise
+			if errs, ok := e.(*errors.Err); ok {
+				err = errs
+				return
+			}
+			panic(e)
 		}
 	}()
 

@@ -9,10 +9,11 @@ import (
 	"net"
 	"os"
 
+	"github.com/denkhaus/goagain"
 	"github.com/denkhaus/llconf/logging"
 	"github.com/denkhaus/llconf/store"
+	"github.com/denkhaus/llconf/util"
 	"github.com/juju/errors"
-	"github.com/rcrowley/goagain"
 
 	"github.com/denkhaus/llconf/promise"
 	"github.com/docker/libchan"
@@ -39,19 +40,22 @@ type oprFunc func(pr promise.Promise, verbose bool) error
 //////////////////////////////////////////////////////////////////////////////////
 type Server struct {
 	tomb              tomb.Tomb
-	listener          net.Listener
+	tslListener       net.Listener
+	tcpListener       net.Listener
 	host              string
 	port              string
+	noRedirect        bool
 	dataStore         *store.DataStore
 	OnPromiseReceived oprFunc
 }
 
 //////////////////////////////////////////////////////////////////////////////////
-func New(host string, port int, ds *store.DataStore, opr oprFunc) *Server {
+func New(host string, port int, ds *store.DataStore, opr oprFunc, noRedirect bool) *Server {
 	serv := Server{
 		host:              host,
 		port:              fmt.Sprintf("%d", port),
 		dataStore:         ds,
+		noRedirect:        noRedirect,
 		OnPromiseReceived: opr,
 	}
 
@@ -60,8 +64,12 @@ func New(host string, port int, ds *store.DataStore, opr oprFunc) *Server {
 
 //////////////////////////////////////////////////////////////////////////////////
 func (p *Server) Close() error {
-	defer p.listener.Close()
+	logging.Logger.Debug("server: close")
+
+	defer p.tslListener.Close()
 	p.tomb.Kill(nil)
+
+	logging.Logger.Debug("server: wait")
 	return p.tomb.Wait()
 }
 
@@ -76,18 +84,42 @@ func (p *Server) LastError() error {
 }
 
 //////////////////////////////////////////////////////////////////////////////////
-func (p *Server) Listener() net.Listener {
-	return p.listener
+func (p *Server) ListenerTCP() net.Listener {
+	return p.tcpListener
 }
 
 //////////////////////////////////////////////////////////////////////////////////
-func (p *Server) ReuseListenerAndRun(l net.Listener) error {
-	logging.Logger.Infof("resume listening on %s", l.Addr())
-	p.listener = l
+func (p *Server) listenTCP(addr string) (*util.TimeoutListener, error) {
+	laddr, err := net.ResolveTCPAddr("tcp", addr)
+	if err != nil {
+		return nil, errors.Annotate(err, "resolve tcp addr")
+	}
+
+	l, err := net.ListenTCP("tcp", laddr)
+	if err != nil {
+		return nil, errors.Annotate(err, "listen tcp")
+	}
+
+	return util.NewTimeoutListener(l), nil
+}
+
+//////////////////////////////////////////////////////////////////////////////////
+func (p *Server) ReuseListenerAndRun(ln net.Listener, cert *tls.Certificate) error {
+	logging.Logger.Infof("resume listening on %s", ln.Addr())
+
+	tlsConfig, err := p.prepeareTLSConfig(cert)
+	if err != nil {
+		return errors.Annotate(err, "prepare tls config")
+	}
+
+	p.tcpListener = util.NewTimeoutListener(ln.(*net.TCPListener))
+	p.tslListener = tls.NewListener(p.tcpListener, tlsConfig)
 
 	p.tomb.Go(func() error {
 		if err := p.run(); err != nil {
-			return errors.Annotate(err, "reuse run")
+			if err != tomb.ErrDying {
+				return errors.Annotate(err, "reuse run")
+			}
 		}
 
 		return nil
@@ -98,11 +130,40 @@ func (p *Server) ReuseListenerAndRun(l net.Listener) error {
 
 //////////////////////////////////////////////////////////////////////////////////
 func (p *Server) CreateListenerAndRun(cert *tls.Certificate) error {
-	pool, err := p.dataStore.Pool()
+	tlsConfig, err := p.prepeareTLSConfig(cert)
 	if err != nil {
-		return errors.Annotate(err, "get client cert pool")
+		return errors.Annotate(err, "prepare tls config")
 	}
 
+	hostPort := net.JoinHostPort(p.host, p.port)
+	ln, err := p.listenTCP(hostPort)
+	if err != nil {
+		return errors.Annotate(err, "listen tcp")
+	}
+
+	p.tcpListener = ln
+	p.tslListener = tls.NewListener(p.tcpListener, tlsConfig)
+
+	logging.Logger.Infof("listening on %s", hostPort)
+	p.tomb.Go(func() error {
+		if err := p.run(); err != nil {
+			if err != tomb.ErrDying {
+				return errors.Annotate(err, "new run")
+			}
+		}
+
+		return nil
+	})
+
+	return nil
+}
+
+////////////////////////////////////////////////////////////////////////////////
+func (p *Server) prepeareTLSConfig(cert *tls.Certificate) (*tls.Config, error) {
+	pool, err := p.dataStore.Pool()
+	if err != nil {
+		return nil, errors.Annotate(err, "get client cert pool")
+	}
 	tlsConfig := &tls.Config{
 		Certificates: []tls.Certificate{*cert},
 		// Reject any TLS certificate that cannot be validated
@@ -120,36 +181,31 @@ func (p *Server) CreateListenerAndRun(cert *tls.Certificate) error {
 	}
 
 	tlsConfig.BuildNameToCertificate()
-	hostPort := net.JoinHostPort(p.host, p.port)
-
-	l, err := tls.Listen("tcp", hostPort, tlsConfig)
-	if err != nil {
-		return errors.Annotate(err, "listen")
-	}
-
-	logging.Logger.Infof("listening on %s", hostPort)
-	p.listener = l
-
-	p.tomb.Go(func() error {
-		if err := p.run(); err != nil {
-			return errors.Annotate(err, "new run")
-		}
-
-		return nil
-	})
-
-	return nil
+	return tlsConfig, nil
 }
 
 //////////////////////////////////////////////////////////////////////////////////
 func (p *Server) redirectOutput(writer io.Writer, fn func() error) error {
-	defer logging.SetOutWriter(os.Stdout)
-	logging.SetOutWriter(writer)
+	if !p.noRedirect {
+		defer logging.SetOutWriter(os.Stdout)
+		logging.SetOutWriter(writer)
+	}
+
 	return fn()
 }
 
 //////////////////////////////////////////////////////////////////////////////////
-func (p *Server) receiveLoop(receiver libchan.Receiver) error {
+func (p *Server) receive(t libchan.Transport) error {
+	defer logging.Logger.Debug("server: receive leaved")
+
+	logging.Logger.Debug("server: wait for receive channel")
+	receiver, err := t.WaitReceiveChannel()
+	if err != nil {
+		return errors.Annotate(err, "wait receive channel")
+	}
+
+	logging.Logger.Debug("server: receive channel available")
+
 	for {
 
 		cmd := RemoteCommand{}
@@ -188,32 +244,9 @@ func (p *Server) receiveLoop(receiver libchan.Receiver) error {
 
 		select {
 		case <-p.tomb.Dying():
+			logging.Logger.Debug("server: receive dying event received")
 			return tomb.ErrDying
-		}
-	}
-	return nil
-}
-
-//////////////////////////////////////////////////////////////////////////////////
-func (p *Server) receive(t libchan.Transport) error {
-	for {
-		logging.Logger.Debug("server: wait for receive channel")
-		receiver, err := t.WaitReceiveChannel()
-		if err != nil {
-			return errors.Annotate(err, "wait receive channel")
-		}
-
-		logging.Logger.Debug("server: receive channel available")
-		p.tomb.Go(func() error {
-			if err := p.receiveLoop(receiver); err != nil {
-				return errors.Annotate(err, "receive loop")
-			}
-			return nil
-		})
-
-		select {
-		case <-p.tomb.Dying():
-			return tomb.ErrDying
+		default:
 		}
 	}
 
@@ -222,15 +255,28 @@ func (p *Server) receive(t libchan.Transport) error {
 
 //////////////////////////////////////////////////////////////////////////////////
 func (p *Server) run() error {
-	for {
-		logging.Logger.Debug("server: wait for connection")
+	defer logging.Logger.Debug("server: run leaved")
 
-		c, err := p.listener.Accept()
+	for {
+
+		select {
+		case <-p.tomb.Dying():
+			logging.Logger.Debug("server: run dying event received")
+			return tomb.ErrDying
+		default:
+		}
+
+		c, err := p.tslListener.Accept()
 		if err != nil {
+
+			if netErr, ok := err.(net.Error); ok &&
+				(netErr.Timeout() || netErr.Temporary()) {
+				continue
+			}
 			if goagain.IsErrClosing(err) {
+				logging.Logger.Debug("server: run closing error received")
 				break
 			}
-
 			return errors.Annotate(err, "accept")
 		}
 
@@ -243,17 +289,13 @@ func (p *Server) run() error {
 
 		p.tomb.Go(func() error {
 			defer pr.Close()
+
 			t := spdy.NewTransport(pr)
 			if err := p.receive(t); err != nil {
 				return errors.Annotate(err, "new receive")
 			}
 			return nil
 		})
-
-		select {
-		case <-p.tomb.Dying():
-			return tomb.ErrDying
-		}
 	}
 
 	return nil

@@ -50,6 +50,8 @@ func newServerCertCommand() cli.Command {
 }
 
 func serverCertAdd(ctx *cli.Context) error {
+	logging.Logger.Info("exec: server cert add")
+
 	rCtx, err := context.New(ctx, false, false)
 	if err != nil {
 		return errors.Annotate(err, "new run context")
@@ -67,6 +69,8 @@ func serverCertAdd(ctx *cli.Context) error {
 }
 
 func serverCertRm(ctx *cli.Context) error {
+	logging.Logger.Info("exec: server cert rm")
+
 	rCtx, err := context.New(ctx, false, false)
 	if err != nil {
 		return errors.Annotate(err, "new run context")

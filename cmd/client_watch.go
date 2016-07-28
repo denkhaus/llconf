@@ -24,6 +24,8 @@ func newClientWatchCommand() cli.Command {
 }
 
 func clientWatch(ctx *cli.Context) error {
+	logging.Logger.Info("exec: client watch")
+
 	rCtx, err := context.New(ctx, true, true)
 	if err != nil {
 		return errors.Annotate(err, "new run context")

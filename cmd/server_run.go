@@ -11,6 +11,12 @@ import (
 func newServerRunCommand() cli.Command {
 	return cli.Command{
 		Name: "run",
+		Flags: []cli.Flag{
+			cli.BoolFlag{
+				Name:  "no-redirect",
+				Usage: "do not redirect processing output to client",
+			},
+		},
 		Action: func(ctx *cli.Context) error {
 			if err := serverRun(ctx); err != nil {
 				logging.Logger.Error(err)
@@ -22,6 +28,8 @@ func newServerRunCommand() cli.Command {
 
 ////////////////////////////////////////////////////////////////////////////////
 func serverRun(ctx *cli.Context) error {
+	logging.Logger.Info("exec: server run")
+
 	rCtx, err := context.New(ctx, false, false)
 	if err != nil {
 		return errors.Annotate(err, "new run context")

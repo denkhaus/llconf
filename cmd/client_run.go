@@ -20,6 +20,8 @@ func newClientRunCommand() cli.Command {
 }
 
 func clientRun(ctx *cli.Context) error {
+	logging.Logger.Info("exec: client run")
+
 	rCtx, err := context.New(ctx, true, true)
 	if err != nil {
 		return errors.Annotate(err, "new run context")
