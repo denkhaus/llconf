@@ -2,8 +2,8 @@ SHA 				= $(shell git rev-parse --short HEAD)
 BUILD_VERSION 		= $(shell date -u +%y-%m-%d-%H-%M-%S)
 BUILD_TARGET		= bin/llconf
 
-CURRENT_VERSION    := $(shell llconf -v)
-CURRENT_REVISION   := $(shell llconf --revision)
+CURRENT_VERSION     = $(shell llconf -v)
+CURRENT_REVISION    = $(shell llconf --revision)
 
 LIB_REPO_PATH		= ~/.llconf/lib
 DOCKER_IMAGE		= denkhaus/llconf
