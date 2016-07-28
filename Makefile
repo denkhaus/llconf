@@ -1,6 +1,7 @@
 SHA 				= $(shell git rev-parse --short HEAD)
 BUILD_VERSION 		= $(shell date -u +%y-%m-%d-%H-%M-%S)
 BUILD_TARGET		= bin/llconf
+LIB_REPO_PATH		= ~/.llconf/lib
 DOCKER_IMAGE		= denkhaus/llconf
 
 all: build git-post
@@ -40,7 +41,7 @@ git-pre:
 
 ################################################################################
 git-post:
-	@echo "\n\n################# ---->  git push"
+	@echo "\n################# ---->  git push"
 	git push origin master	
 	
 ################################################################################
@@ -57,12 +58,23 @@ run:
 
 ################################################################################
 build: git-pre
-	@echo "\n\n################# ---->  build $(BUILD_TARGET)"
+	@echo "\n################# ---->  build $(BUILD_TARGET)"
 	@go build -o $(BUILD_TARGET) \
 		-ldflags "-w -s \
 		-X main.Revision=$(SHA) \
 		-X main.AppVersion=$(BUILD_VERSION)"	
-	@echo "\n\n################# ---->  deploy $(BUILD_TARGET)"
+	@echo "\n################# ---->  deploy $(BUILD_TARGET)"
 	@mv $(BUILD_TARGET) $(GOBIN)
 	@echo "current build: $(shell llconf -v)"
+
+
+################################################################################
+update-lib:
+	cd $(LIB_REPO_PATH) && echo "$(shell llconf --revision)" > .llconv_rev
+
+
+
+
+
+
 	
