@@ -29,17 +29,19 @@ push-container:
 	docker push $(DOCKER_IMAGE)
 
 ################################################################################
-build-docker: push-git
+build-docker: git-pre git-post
 	- docker rm -f llconf
 	- docker rmi -f $(DOCKER_IMAGE)
 	docker build -t $(DOCKER_IMAGE) docker/
 
 ################################################################################
 git-pre:
+	@echo "\n\n################# ---->  git prepare"
 	- git add -A && git commit -am "$(BUILD_VERSION)"	
 
 ################################################################################
 git-post:
+	@echo "\n\n################# ---->  git push"
 	git push origin master	
 	
 ################################################################################
@@ -61,5 +63,7 @@ build: git-pre
 		-ldflags "-w -s \
 		-X main.Revision=$(SHA) \
 		-X main.AppVersion=$(VERSION)"	
+	@echo "\n\n################# ---->  deploy $(BUILD_TARGET)"
 	@mv $(BUILD_TARGET) $(GOBIN)
 	@echo "current build: $(shell llconf -v)"
+	
