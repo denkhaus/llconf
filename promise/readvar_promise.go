@@ -22,11 +22,10 @@ func (p ReadvarPromise) New(children []Promise, args []Argument) (Promise, error
 	}
 
 	if len(children) != 1 {
-		return nil, errors.New("(readvar) needs exactly one exec promise allowed")
+		return nil, errors.New("(readvar) needs exactly one exec promise")
 	}
 
 	exec := children[0]
-	spew.Dump(exec)
 
 	switch exec.(type) {
 	case ExecPromise:
@@ -49,11 +48,16 @@ func (p ReadvarPromise) Desc(arguments []Constant) string {
 }
 
 func (p ReadvarPromise) Eval(arguments []Constant, ctx *Context, stack string) bool {
+	spew.Dump(p)
 	result := p.Exec.Eval(arguments, ctx, stack)
 	name := p.VarName.GetValue(arguments, &ctx.Vars)
 	value := ctx.ExecOutput.String()
 
-	ctx.Vars[name] = strings.TrimSpace(value)
+	val := strings.TrimSpace(value)
+	if v, ok := ctx.Vars[name]; ok && v != val {
+		panic(errors.Errorf("variable %q is already defined", name))
+	}
 
+	ctx.Vars[name] = val
 	return result
 }

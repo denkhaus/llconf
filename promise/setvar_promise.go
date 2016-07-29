@@ -28,11 +28,12 @@ func (p SetvarPromise) Eval(arguments []Constant, ctx *Context, stack string) bo
 	name := p.Name.GetValue(arguments, &ctx.Vars)
 	value := p.Value.GetValue(arguments, &ctx.Vars)
 
-	if _, ok := ctx.Vars[name]; ok {
+	val := strings.TrimSpace(value)
+	if v, ok := ctx.Vars[name]; ok && v != val {
 		panic(errors.Errorf("variable %q is already defined", name))
 	}
 
-	ctx.Vars[name] = strings.TrimSpace(value)
+	ctx.Vars[name] = val
 	return true
 }
 
