@@ -188,7 +188,7 @@ func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 		logging.Logger.Info(stack)
 		logging.Logger.Infof("[%s %s]%s -> %t", p.Type.String(),
 			strings.Join(cmd.Args, " "),
-			ctx.ExecOutput.String, ret)
+			ctx.ExecOutput.String(), ret)
 	}
 
 	p.Type.IncrementExecCounter()
