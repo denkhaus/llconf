@@ -1,9 +1,9 @@
 package promise
 
 import (
+	"fmt"
 	"strings"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/juju/errors"
 )
 
@@ -28,9 +28,7 @@ func (p ReadvarPromise) New(children []Promise, args []Argument) (Promise, error
 	exec := children[0]
 
 	switch exec.(type) {
-	case ExecPromise:
-	case PipePromise:
-	case NamedPromise:
+	case ExecPromise, PipePromise, NamedPromise:
 		promise.Exec = exec
 	default:
 		return nil, errors.New("(readvar) did not found an evaluable promise")
@@ -40,15 +38,10 @@ func (p ReadvarPromise) New(children []Promise, args []Argument) (Promise, error
 }
 
 func (p ReadvarPromise) Desc(arguments []Constant) string {
-	args := make([]string, len(arguments))
-	for i, v := range arguments {
-		args[i] = v.String()
-	}
-	return "(readvar " + strings.Join(args, ", ") + ")"
+	return fmt.Sprintf("(readvar %s %s)", p.VarName, p.Exec.Desc(arguments))
 }
 
 func (p ReadvarPromise) Eval(arguments []Constant, ctx *Context, stack string) bool {
-	spew.Dump(p)
 	result := p.Exec.Eval(arguments, ctx, stack)
 	name := p.VarName.GetValue(arguments, &ctx.Vars)
 	value := ctx.ExecOutput.String()
