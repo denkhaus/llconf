@@ -131,7 +131,7 @@ func (p ExecPromise) processOutput(ctx *Context, cmd *exec.Cmd) error {
 			}
 		}
 		commonWriter.Flush()
-		spew.Dump(commonWriter)
+		//spew.Dump(commonWriter)
 	}
 
 	outReader, err := cmd.StdoutPipe()
