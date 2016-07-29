@@ -2,6 +2,7 @@ package promise
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/juju/errors"
 )
@@ -31,7 +32,7 @@ func (p SetvarPromise) Eval(arguments []Constant, ctx *Context, stack string) bo
 		panic(errors.Errorf("variable %q is already defined", name))
 	}
 
-	ctx.Vars[name] = value
+	ctx.Vars[name] = strings.TrimSpace(value)
 	return true
 }
 

@@ -1,25 +1,15 @@
 package promise
 
 import (
-	"io"
 	"strings"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/juju/errors"
 )
 
 type ReadvarPromise struct {
 	VarName Argument
 	Exec    Promise
-}
-
-type ReadvarWriter struct {
-	writer io.Writer
-	bytes  []byte
-}
-
-func (w *ReadvarWriter) Write(p []byte) (n int, err error) {
-	w.bytes = append(w.bytes, p...)
-	return w.writer.Write(p)
 }
 
 func (p ReadvarPromise) New(children []Promise, args []Argument) (Promise, error) {
@@ -44,7 +34,7 @@ func (p ReadvarPromise) New(children []Promise, args []Argument) (Promise, error
 	default:
 		return nil, errors.New("(readvar) did not found an evaluable promise")
 	}
-
+	spew.Dump(promise)
 	return promise, nil
 }
 
@@ -58,7 +48,6 @@ func (p ReadvarPromise) Desc(arguments []Constant) string {
 
 func (p ReadvarPromise) Eval(arguments []Constant, ctx *Context, stack string) bool {
 	result := p.Exec.Eval(arguments, ctx, stack)
-
 	name := p.VarName.GetValue(arguments, &ctx.Vars)
 	value := ctx.ExecOutput.String()
 
