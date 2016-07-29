@@ -87,7 +87,7 @@ push-release:
     --user denkhaus \
     --repo llconf \
     --tag $(SHA) \
-    --name $(CURRENT_VERSION) \
+    --name "$(CURRENT_VERSION)" \
     --description "llconf - configuration managment solution"
     
 
