@@ -45,9 +45,10 @@ git-pre:
 	- git add -A && git commit -am "$(BUILD_VERSION)"	
 
 ################################################################################
-git-post:
+git-post:	
 	@echo "\n################# ---->  git push llconf"
-	git push origin master	
+	git tag $(CURRENT_REVISION)
+	git push --tags origin master	
 	
 ################################################################################
 debug:
