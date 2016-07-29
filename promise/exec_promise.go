@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/denkhaus/llconf/logging"
 	"github.com/juju/errors"
 )
@@ -172,6 +173,8 @@ func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 	if err := cmd.Wait(); err != nil {
 		return false
 	}
+
+	spew.Dump(ctx.ExecOutput)
 
 	p.Type.IncrementExecCounter()
 	return true
