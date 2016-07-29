@@ -1,5 +1,5 @@
 SHA 				= $(shell git rev-parse --short HEAD)
-BUILD_VERSION 		= $(shell date -u +%y-%m-%d-%H-%M-%S)
+BUILD_VERSION 		= $(shell date -u +%y-%m-%d\ %H\:%M\:%S)
 BUILD_TARGET		= bin/llconf
 
 CURRENT_VERSION     = $(shell llconf -v)
