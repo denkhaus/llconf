@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/denkhaus/llconf/logging"
 	"github.com/juju/errors"
 )
@@ -121,7 +120,11 @@ func (p ExecPromise) processOutput(ctx *Context, cmd *exec.Cmd) error {
 
 	process := func(reader io.Reader, fn func(string)) {
 		p.wgOutput.Add(1)
-		defer p.wgOutput.Done()
+		defer func() {
+			commonWriter.Flush()
+			p.wgOutput.Done()
+
+		}()
 
 		scn := bufio.NewScanner(reader)
 		for scn.Scan() {
@@ -130,8 +133,6 @@ func (p ExecPromise) processOutput(ctx *Context, cmd *exec.Cmd) error {
 				fn(scn.Text())
 			}
 		}
-		commonWriter.Flush()
-		//spew.Dump(commonWriter)
 	}
 
 	outReader, err := cmd.StdoutPipe()
@@ -181,14 +182,14 @@ func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 		return false
 	}
 
+	//wait until output is processed
 	p.wgOutput.Wait()
-	spew.Dump(ctx.ExecOutput.String())
-
 	p.Type.IncrementExecCounter()
+
 	return true
 }
 
-/////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
 type PipePromise struct {
 	Execs []ExecPromise

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/juju/errors"
 )
 
@@ -47,7 +46,6 @@ func (p ReadvarPromise) Eval(arguments []Constant, ctx *Context, stack string) b
 	name := p.VarName.GetValue(arguments, &ctx.Vars)
 	value := ctx.ExecOutput.String()
 
-	spew.Dump(value)
 	val := strings.TrimSpace(value)
 	if v, ok := ctx.Vars[name]; ok && v != val {
 		panic(errors.Errorf("variable %q is already defined", name))
