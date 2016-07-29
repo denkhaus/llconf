@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
@@ -49,6 +50,7 @@ func (t ExecType) String() string {
 type ExecPromise struct {
 	Type      ExecType
 	Arguments []Argument
+	wgOutput  sync.WaitGroup
 }
 
 func (p ExecPromise) New(children []Promise, args []Argument) (Promise, error) {
@@ -118,6 +120,9 @@ func (p ExecPromise) processOutput(ctx *Context, cmd *exec.Cmd) error {
 	commonWriter := bufio.NewWriter(ctx.ExecOutput)
 
 	process := func(reader io.Reader, fn func(string)) {
+		p.wgOutput.Add(1)
+		defer p.wgOutput.Done()
+
 		scn := bufio.NewScanner(reader)
 		for scn.Scan() {
 			spew.Dump(scn.Text())
@@ -175,6 +180,7 @@ func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 		return false
 	}
 
+	p.wgOutput.Wait()
 	spew.Dump(ctx.ExecOutput.String())
 
 	p.Type.IncrementExecCounter()
