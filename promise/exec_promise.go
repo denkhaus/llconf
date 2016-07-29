@@ -125,12 +125,13 @@ func (p ExecPromise) processOutput(ctx *Context, cmd *exec.Cmd) error {
 
 		scn := bufio.NewScanner(reader)
 		for scn.Scan() {
-			//spew.Dump(scn.Text())
 			commonWriter.WriteString(scn.Text())
 			if ctx.Verbose || p.Type == ExecChange {
 				fn(scn.Text())
 			}
 		}
+		commonWriter.Flush()
+		spew.Dump(commonWriter)
 	}
 
 	outReader, err := cmd.StdoutPipe()
