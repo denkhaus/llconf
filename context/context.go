@@ -554,35 +554,15 @@ func (p *context) SendPromise(tree promise.Promise) error {
 		return errors.Annotate(err, "encode")
 	}
 
-	r, w, err := os.Pipe()
-	if err != nil {
-		return errors.Annotate(err, "pipe")
-	}
-
 	cmd := RemoteCommand{
 		Data:        buf.Bytes(),
-		Stdout:      w,
+		Stdout:      os.Stdout,
 		SendChannel: p.remoteSender,
 		Verbose:     p.Verbose,
 	}
 
-	logging.Logger.Info("send promise")
-
-	// server takes control
-	logging.Logger.Debug("redirect stdout")
 	stdout := os.Stdout
-	os.Stdout = r
-
-	// if we fail, restore stdout
-	defer func() {
-		if os.Stdout != stdout {
-			logging.Logger.Debug("send failed: restore stdout")
-			os.Stdout = stdout
-			r.Close()
-			w.Close()
-		}
-	}()
-
+	logging.Logger.Info("send promise")
 	if err := p.sender.Send(cmd); err != nil {
 		return errors.Annotate(err, "send")
 	}
@@ -596,12 +576,7 @@ func (p *context) SendPromise(tree promise.Promise) error {
 		return errors.Annotate(err, "close sender channel")
 	}
 
-	// client takes control again
-	logging.Logger.Debug("restore stdout")
-	r.Close()
-	w.Close()
 	os.Stdout = stdout
-
 	logging.Logger.Info(resp.Status)
 
 	if resp.Error != "" {
