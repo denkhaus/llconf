@@ -64,6 +64,7 @@ run:
 ################################################################################
 build: git-pre
 	@echo "\n################# ---->  build $(BUILD_TARGET)"
+	@rm -f $(BUILD_TARGET)
 	@go build -o $(BUILD_TARGET) \
 		-ldflags "-w -s \
 		-X main.Revision=$(SHA) \

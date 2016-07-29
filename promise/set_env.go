@@ -9,7 +9,7 @@ type SetEnv struct {
 }
 
 func (s SetEnv) Desc(arguments []Constant) string {
-	return fmt.Sprintf("(setenv %s %s)", s.Name, s.Child.Desc(arguments))
+	return fmt.Sprintf("(setenv %s %s %s)", s.Name, s.Value, s.Child.Desc(arguments))
 }
 
 func (s SetEnv) Eval(arguments []Constant, ctx *Context, stack string) bool {
