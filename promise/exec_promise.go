@@ -120,6 +120,7 @@ func (p ExecPromise) processOutput(ctx *Context, cmd *exec.Cmd) error {
 	process := func(reader io.Reader, fn func(string)) {
 		scn := bufio.NewScanner(reader)
 		for scn.Scan() {
+			spew.Dump(scn.Text())
 			commonWriter.WriteString(scn.Text())
 			if ctx.Verbose || p.Type == ExecChange {
 				fn(scn.Text())
