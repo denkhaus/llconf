@@ -83,19 +83,20 @@ update-lib:
 
 ################################################################################
 push-release:
-	github-release release \
-    --user denkhaus \
-    --repo llconf \
-    --tag $(SHA) \
-    --name "$(CURRENT_VERSION)" \
-    --description "llconf - configuration managment solution"
+	@echo "\n################# ---->  push release for $(CURRENT_REVISION)"
+	@github-release release \
+    -u denkhaus \
+    -r llconf \
+    -t $(SHA) \
+    -n "$(CURRENT_VERSION)" \
+    -d "llconf - configuration managment solution"
 	
-	github-release upload \
-    --user denkhaus \
-    --repo llconf \
-    --tag $(SHA) \
-    --name "llconf-$(SHA)" \
-    --file $(BUILD_TARGET)
+	@github-release upload \
+    -u denkhaus \
+    -r llconf \
+    -t $(SHA) \
+    -n "llconf-$(SHA)" \
+    -f $(BUILD_TARGET)
     
 
 
