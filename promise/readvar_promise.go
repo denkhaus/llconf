@@ -26,6 +26,8 @@ func (p ReadvarPromise) New(children []Promise, args []Argument) (Promise, error
 	}
 
 	exec := children[0]
+	spew.Dump(exec)
+
 	switch exec.(type) {
 	case ExecPromise:
 	case PipePromise:
@@ -34,7 +36,7 @@ func (p ReadvarPromise) New(children []Promise, args []Argument) (Promise, error
 	default:
 		return nil, errors.New("(readvar) did not found an evaluable promise")
 	}
-	spew.Dump(promise)
+
 	return promise, nil
 }
 
