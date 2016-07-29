@@ -174,18 +174,20 @@ func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 	}
 
 	var ret = true
+	var clr = "\e[92m"
 	if err := cmd.Wait(); err != nil {
 		ret = false
+		clr = "\e[91m"
 	}
 
 	//wait until output is processed
-	p.wgOutput.Wait()
-
+	p.wgOutput.Wait()	
+	
 	if ctx.Verbose || p.Type == ExecChange {
 		logging.Logger.Info(stack)
-		logging.Logger.Infof("[%s %s] <%s> -> %t", p.Type.String(),
+		logging.Logger.Infof("\e[34m[%s %s] <%s> -> %s%t", p.Type.String(),
 			strings.Join(cmd.Args, " "),
-			ctx.ExecOutput.String(), ret)
+			ctx.ExecOutput.String(), clr, ret)
 	}
 
 	p.Type.IncrementExecCounter()
