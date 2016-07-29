@@ -73,8 +73,9 @@ build: git-pre
 
 ################################################################################
 update-lib:	
+	@echo "\n################# ---->  update lib revision to $(CURRENT_REVISION)"
 	cd $(LIB_REPO_PATH) && \
-	echo $(CURRENT_REVISION) > .llconv_rev && \
+	echo $(CURRENT_REVISION) > .llconf_rev && \
 	git add -A && git commit -am "update current rev: $(CURRENT_REVISION)" && \
 	git push origin master	
 

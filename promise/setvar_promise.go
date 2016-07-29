@@ -1,40 +1,40 @@
 package promise
 
-type SetvarPromise struct {
-	VarName  Argument
-	VarValue Argument
-}
+import (
+	"fmt"
 
-type SetvarError string
-
-func (e SetvarError) Error() string {
-	return string(e)
-}
-
-const (
-	ArgumentCount = SetvarError("(setvar) needs 2 arguments")
+	"github.com/juju/errors"
 )
 
-func (p SetvarPromise) New(children []Promise, args []Argument) (Promise, error) {
+type SetvarPromise struct {
+	Name  Argument
+	Value Argument
+}
 
-	if len(args) != 2 {
-		return nil, ArgumentCount
+func (p SetvarPromise) New(children []Promise, args []Argument) (Promise, error) {
+	setvar := SetvarPromise{}
+
+	if len(args) == 2 {
+		setvar.Name = args[0]
+		setvar.Value = args[1]
+		return setvar, nil
 	}
 
-	setvar := SetvarPromise{}
-	setvar.VarName = args[0]
-	setvar.VarValue = args[1]
-
-	return setvar, nil
+	return nil, errors.New("use (setvar \"varname\" \"varvalue\")")
 }
 
 func (p SetvarPromise) Eval(arguments []Constant, ctx *Context, stack string) bool {
-	name := p.VarName.GetValue(arguments, &ctx.Vars)
-	value := p.VarValue.GetValue(arguments, &ctx.Vars)
+	name := p.Name.GetValue(arguments, &ctx.Vars)
+	value := p.Value.GetValue(arguments, &ctx.Vars)
+
+	if _, ok := ctx.Vars[name]; ok {
+		panic(errors.Errorf("variable %q is already defined", name))
+	}
+
 	ctx.Vars[name] = value
 	return true
 }
 
 func (p SetvarPromise) Desc(arguments []Constant) string {
-	return "(setvar \"" + p.VarName.String() + "\" " + p.VarValue.String() + " )"
+	return fmt.Sprintf("(setvar %q %q)", p.Name.String(), p.Value.String())
 }
