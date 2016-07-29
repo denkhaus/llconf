@@ -46,8 +46,7 @@ git-pre:
 
 ################################################################################
 git-post:	
-	@echo "\n################# ---->  git push llconf"
-	git tag -a $(CURRENT_REVISION) -m $(CURRENT_VERSION)
+	@echo "\n################# ---->  git push llconf"	
 	git push --tags origin master	
 	
 ################################################################################
@@ -69,6 +68,7 @@ build: git-pre
 		-ldflags "-w -s \
 		-X main.Revision=$(SHA) \
 		-X main.AppVersion=$(BUILD_VERSION)"	
+	@git tag -a $(SHA) -m $(BUILD_VERSION)
 	@echo "\n################# ---->  deploy $(BUILD_TARGET)"
 	@mv $(BUILD_TARGET) $(GOBIN)
 
