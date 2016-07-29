@@ -124,13 +124,13 @@ func (p ExecPromise) processOutput(ctx *Context, cmd *exec.Cmd) error {
 		defer func() {
 			cw.Flush()
 			p.wgOutput.Done()
-
 		}()
 
 		scn := bufio.NewScanner(reader)
 		for scn.Scan() {
 			cw.WriteString(scn.Text())
-			if ctx.Verbose || p.Type == ExecChange {
+			if fn != nil &&
+				(ctx.Verbose || p.Type == ExecChange) {
 				fn(scn.Text())
 			}
 		}
@@ -145,8 +145,8 @@ func (p ExecPromise) processOutput(ctx *Context, cmd *exec.Cmd) error {
 		return errors.Annotate(err, "get stderr pipe")
 	}
 
-	go process(outReader, func(out string) { logging.Logger.Info(out) })
-	go process(errReader, func(out string) { logging.Logger.Error(out) })
+	go process(outReader, nil) //func(out string) { logging.Logger.Info(out) })
+	go process(errReader, nil) //func(out string) { logging.Logger.Error(out) })
 
 	return nil
 }
