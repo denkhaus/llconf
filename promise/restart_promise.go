@@ -51,6 +51,7 @@ func (p RestartPromise) Eval(arguments []Constant, ctx *Context, stack string) b
 		}
 
 		if oldExe != newExe {
+			logging.Logger.Infof("copy %q to %q", newExe, oldExe)
 			if err := os.Rename(newExe, oldExe); err != nil {
 				panic(errors.Annotatef(err, "(restart) mv %q to %q", newExe, oldExe))
 			}
