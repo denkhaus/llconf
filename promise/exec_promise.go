@@ -180,15 +180,24 @@ func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 	if err := cmd.Start(); err != nil {
 		panic(errors.Annotate(err, "cmd start"))
 	}
+
+	var ret bool
 	if err := cmd.Wait(); err != nil {
-		return false
+		ret = false
+	} else {
+		ret = true
 	}
 
 	//wait until output is processed
 	p.wgOutput.Wait()
+
+	if ctx.Verbose || p.Type == ExecChange {
+		logging.Logger.Infof("-> %t", ret)
+	}
+
 	p.Type.IncrementExecCounter()
 
-	return true
+	return ret
 }
 
 ////////////////////////////////////////////////////////////////////////////////
