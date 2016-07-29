@@ -174,7 +174,7 @@ func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 		return false
 	}
 
-	spew.Dump(ctx.ExecOutput)
+	spew.Dump(ctx.ExecOutput.String())
 
 	p.Type.IncrementExecCounter()
 	return true
