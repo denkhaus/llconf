@@ -561,7 +561,7 @@ func (p *context) SendPromise(tree promise.Promise) error {
 
 	cmd := RemoteCommand{
 		Data:        buf.Bytes(),
-		Stdout:      r,
+		Stdout:      w,
 		SendChannel: p.remoteSender,
 		Verbose:     p.Verbose,
 	}
@@ -571,13 +571,14 @@ func (p *context) SendPromise(tree promise.Promise) error {
 	// server takes control
 	logging.Logger.Debug("redirect stdout")
 	stdout := os.Stdout
-	os.Stdout = w
+	os.Stdout = r
 
 	// if we fail, restore stdout
 	defer func() {
 		if os.Stdout != stdout {
 			logging.Logger.Debug("send failed: restore stdout")
 			os.Stdout = stdout
+			r.Close()
 			w.Close()
 		}
 	}()
@@ -597,6 +598,7 @@ func (p *context) SendPromise(tree promise.Promise) error {
 
 	// client takes control again
 	logging.Logger.Debug("restore stdout")
+	r.Close()
 	w.Close()
 	os.Stdout = stdout
 
