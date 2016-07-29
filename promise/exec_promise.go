@@ -114,21 +114,22 @@ func (p ExecPromise) Desc(arguments []Constant) string {
 	return "(" + p.Type.Name() + " <" + cmd + " [" + strings.Join(args, ", ") + "] >)"
 }
 
+////////////////////////////////////////////////////////////////////////////////
 func (p ExecPromise) processOutput(ctx *Context, cmd *exec.Cmd) error {
 	ctx.ExecOutput.Reset()
-	commonWriter := bufio.NewWriter(ctx.ExecOutput)
+	cw := bufio.NewWriter(ctx.ExecOutput)
 
 	process := func(reader io.Reader, fn func(string)) {
 		p.wgOutput.Add(1)
 		defer func() {
-			commonWriter.Flush()
+			cw.Flush()
 			p.wgOutput.Done()
 
 		}()
 
 		scn := bufio.NewScanner(reader)
 		for scn.Scan() {
-			commonWriter.WriteString(scn.Text())
+			cw.WriteString(scn.Text())
 			if ctx.Verbose || p.Type == ExecChange {
 				fn(scn.Text())
 			}
@@ -146,6 +147,7 @@ func (p ExecPromise) processOutput(ctx *Context, cmd *exec.Cmd) error {
 
 	go process(outReader, func(out string) { logging.Logger.Info(out) })
 	go process(errReader, func(out string) { logging.Logger.Error(out) })
+
 	return nil
 }
 
