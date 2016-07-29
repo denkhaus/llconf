@@ -157,11 +157,6 @@ func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 		panic(errors.Annotate(err, "get command"))
 	}
 
-	if ctx.Verbose || p.Type == ExecChange {
-		logging.Logger.Info(stack)
-		logging.Logger.Info("[", p.Type.String(), "] ", strings.Join(cmd.Args, " "))
-	}
-
 	quit := make(chan bool)
 	defer func() { quit <- true }()
 
@@ -181,22 +176,22 @@ func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 		panic(errors.Annotate(err, "cmd start"))
 	}
 
-	var ret bool
+	var ret = true
 	if err := cmd.Wait(); err != nil {
 		ret = false
-	} else {
-		ret = true
 	}
 
 	//wait until output is processed
 	p.wgOutput.Wait()
 
 	if ctx.Verbose || p.Type == ExecChange {
-		logging.Logger.Infof("-> %t", ret)
+		logging.Logger.Info(stack)
+		logging.Logger.Infof("[%s %s]%s -> %t", p.Type.String(),
+			strings.Join(cmd.Args, " "),
+			ctx.ExecOutput.String, ret)
 	}
 
 	p.Type.IncrementExecCounter()
-
 	return ret
 }
 
