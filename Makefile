@@ -9,7 +9,7 @@ LIB_REPO_PATH		= ~/.llconf/lib
 DOCKER_IMAGE		= denkhaus/llconf
 
 ################################################################################
-all: build git-post update-lib
+all: build git-post push-release update-lib
 
 ################################################################################
 start-docker: build-docker start-docker
@@ -69,9 +69,10 @@ build: git-pre
 		-X main.Revision=$(SHA) \
 		-X main.AppVersion=$(BUILD_VERSION)"	
 	@git tag -a $(SHA) -m $(BUILD_VERSION)
+	
 	@echo "\n################# ---->  deploy $(BUILD_TARGET)"
-	@mv $(BUILD_TARGET) $(GOBIN)
-
+	@cp $(BUILD_TARGET) $(GOBIN)
+	
 ################################################################################
 update-lib:	
 	@echo "\n################# ---->  update lib revision to $(CURRENT_REVISION)"
@@ -80,6 +81,15 @@ update-lib:
 	git add -A && git commit -am "update current rev: $(CURRENT_REVISION)" && \
 	git push origin master	
 
+################################################################################
+push-release:
+	github-release release \
+    --user denkhaus \
+    --repo llconf \
+    --tag $(SHA) \
+    --name $(CURRENT_VERSION) \
+    --description "llconf - configuration managment solution"
+    
 
 
 
