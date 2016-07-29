@@ -47,7 +47,7 @@ git-pre:
 ################################################################################
 git-post:	
 	@echo "\n################# ---->  git push llconf"
-	git tag $(CURRENT_REVISION)
+	git tag -a $(CURRENT_REVISION) -m $(CURRENT_VERSION)
 	git push --tags origin master	
 	
 ################################################################################
