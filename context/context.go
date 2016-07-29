@@ -11,6 +11,7 @@ import (
 	"encoding/pem"
 	"math/big"
 	"net"
+	"runtime/debug"
 	"syscall"
 
 	"fmt"
@@ -587,12 +588,11 @@ func (p *context) ExecPromise(tree promise.Promise, verbose bool) (err error) {
 	defer func() {
 		e := recover()
 		if e != nil {
-			// return only own panicing but repanic otherwise
 			if errs, ok := e.(*errors.Err); ok {
 				err = errs
 				return
 			}
-			panic(e)
+			err = errors.Errorf("server panic happend: %s", debug.Stack())
 		}
 	}()
 
