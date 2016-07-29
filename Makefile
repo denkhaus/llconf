@@ -89,6 +89,13 @@ push-release:
     --tag $(SHA) \
     --name "$(CURRENT_VERSION)" \
     --description "llconf - configuration managment solution"
+	
+	github-release upload \
+    --user denkhaus \
+    --repo llconf \
+    --tag $(SHA) \
+    --name "llconf-$(SHA)" \
+    --file $(BUILD_TARGET)
     
 
 
