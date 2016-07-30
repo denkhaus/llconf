@@ -499,6 +499,7 @@ func (p *context) parseArguments(isClient bool, needInput bool) error {
 	gob.Register(promise.FalsePromise{})
 	gob.Register(promise.NotPromise{})
 	gob.Register(promise.PipePromise{})
+	gob.Register(promise.SPipePromise{})
 	gob.Register(promise.EvalPromise{})
 	gob.Register(promise.ArgGetter{})
 	gob.Register(promise.JoinArgument{})

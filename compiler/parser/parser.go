@@ -19,6 +19,7 @@ var builtins = map[string]promise.Promise{
 	"setenv":   promise.SetEnv{},
 	"change":   promise.ExecPromise{Type: promise.ExecChange},
 	"pipe":     promise.PipePromise{},
+	"spipe":    promise.SPipePromise{},
 	"setvar":   promise.SetvarPromise{},
 	"readvar":  promise.ReadvarPromise{},
 	"template": promise.TemplatePromise{},

@@ -183,9 +183,10 @@ func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 
 	if ctx.Verbose || p.Type == ExecChange {
 		logging.Logger.Info(stack)
-		logging.Logger.Infof("[%s %s] <%s> -> %t", p.Type.String(),
-			strings.Join(cmd.Args, " "),
-			ctx.ExecOutput.String(), ret)
+		logging.Logger.Infof("[%s %s]-> %t", p.Type.String(), strings.Join(cmd.Args, " "), ret)
+		if ctx.ExecOutput.Len() > 0 {
+			logging.Logger.Infof("output:\n%s", ctx.ExecOutput.String())
+		}
 	}
 
 	p.Type.IncrementExecCounter()
@@ -260,7 +261,8 @@ func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 		}
 	}
 
-	for i, command := range commands[:len(commands)-1] {
+	nCommands := len(commands)
+	for i, command := range commands[:nCommands-1] {
 		out, err := command.StdoutPipe()
 		if err != nil {
 			panic(errors.Annotate(err, "stdout pipe"))
@@ -278,9 +280,112 @@ func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 	ctx.ExecOutput.Reset()
 	last_cmd.Stdout = ctx.ExecOutput
 	last_cmd.Stderr = ctx.ExecOutput
-
 	cmdError := last_cmd.Run()
-	for _, command := range commands[:len(commands)-1] {
+
+	for _, command := range commands[:nCommands-1] {
+		command.Wait()
+	}
+
+	if ctx.Verbose || pipe_contains_change {
+		logging.Logger.Info(stack)
+		logging.Logger.Info(strings.Join(cstrings, " | "))
+		if ctx.ExecOutput.Len() > 0 {
+			logging.Logger.Info(ctx.ExecOutput.String())
+		}
+	}
+	return (cmdError == nil)
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+type SPipePromise struct {
+	Execs []ExecPromise
+}
+
+func (p SPipePromise) New(children []Promise, args []Argument) (Promise, error) {
+
+	if len(args) != 0 {
+		return nil, errors.New("string arguments not allowed in (spipe) promise")
+	}
+
+	execs := []ExecPromise{}
+
+	for _, c := range children {
+		switch t := c.(type) {
+		case ExecPromise:
+			execs = append(execs, t)
+		default:
+			return nil, errors.New("only (test) or (change) promises allowed inside (spipe) promise")
+		}
+	}
+
+	return PipePromise{execs}, nil
+}
+
+func (p SPipePromise) Desc(arguments []Constant) string {
+	retval := "(spipe"
+	for _, v := range p.Execs {
+		retval += " " + v.Desc(arguments)
+	}
+	return retval + ")"
+}
+
+func (p SPipePromise) Eval(arguments []Constant, ctx *Context, stack string) bool {
+
+	quit := make(chan bool)
+	defer func() { quit <- true }()
+
+	go func(quit chan bool) {
+		select {
+		case <-quit:
+			return
+		case <-time.After(time.Duration(5) * time.Minute):
+			logging.Logger.Warn(stack, " has been running for 5 minutes")
+		}
+	}(quit)
+
+	commands := []*exec.Cmd{}
+	cstrings := []string{}
+
+	pipe_contains_change := false
+
+	for _, v := range p.Execs {
+		cmd, err := v.getCommand(arguments, ctx)
+		if err != nil {
+			panic(errors.Annotate(err, "get command"))
+		}
+
+		v.Type.IncrementExecCounter()
+		cstrings = append(cstrings, "["+v.Type.String()+"] "+strings.Join(cmd.Args, " "))
+		commands = append(commands, cmd)
+
+		if v.Type == ExecChange {
+			pipe_contains_change = true
+		}
+	}
+
+	nCommands := len(commands)
+	for i, command := range commands[:nCommands-1] {
+		out, err := command.StdoutPipe()
+		if err != nil {
+			panic(errors.Annotate(err, "stdout pipe"))
+		}
+
+		if err := command.Start(); err != nil {
+			panic(errors.Annotate(err, "start"))
+		}
+
+		commands[i+1].Stdin = out
+	}
+
+	last_cmd := commands[len(commands)-1]
+
+	ctx.ExecOutput.Reset()
+	last_cmd.Stdout = ctx.ExecOutput
+	last_cmd.Stderr = ctx.ExecOutput
+	cmdError := last_cmd.Run()
+
+	for _, command := range commands[:nCommands-1] {
 		command.Wait()
 	}
 
