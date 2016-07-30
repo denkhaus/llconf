@@ -432,7 +432,7 @@ func (p *context) parseArguments(isClient bool, needInput bool) error {
 	logging.SetDebug(p.debug)
 
 	p.clientVersion = p.appCtx.App.Version
-	p.rootPromise = p.appCtx.String("promise")
+	p.rootPromise = p.appCtx.GlobalString("promise")
 	p.host = p.appCtx.GlobalString("host")
 	p.port = p.appCtx.GlobalInt("port")
 
@@ -469,7 +469,7 @@ func (p *context) parseArguments(isClient bool, needInput bool) error {
 	logging.Logger.Infof("use library @ %q", p.LibDir)
 
 	if isClient {
-		p.verbose = p.appCtx.Bool("verbose")
+		p.verbose = p.appCtx.GlobalBool("verbose")
 		logging.Logger.Infof("verbose: %t debug: %t", p.verbose, p.debug)
 
 		p.clientPrivKeyPath = path.Join(certDir, "client.privkey.pem")
