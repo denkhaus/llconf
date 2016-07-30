@@ -9,7 +9,7 @@ LIB_REPO_PATH		= ~/.llconf/lib
 DOCKER_IMAGE		= denkhaus/llconf
 
 ################################################################################
-all: build git-post push-release update-lib
+all: build git-post wait release update-lib
 
 ################################################################################
 start-docker: build-docker start-docker
@@ -83,7 +83,7 @@ update-lib:
 	git push origin master	
 
 ################################################################################
-push-release:
+release:
 	@echo "\n################# ---->  push release for $(CURRENT_REVISION)"
 	@github-release release \
     -u denkhaus \
@@ -99,7 +99,10 @@ push-release:
     -n "llconf-$(SHA)" \
     -f $(BUILD_TARGET)
     
-
+################################################################################
+wait:
+	@echo "\n################# ---->  wait until github recognizes new tag"
+	@ sleep 10
 
 
 

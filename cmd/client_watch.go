@@ -24,7 +24,7 @@ func newClientWatchCommand() cli.Command {
 }
 
 func clientWatch(ctx *cli.Context) error {
-	logging.Logger.Info("exec: client watch")
+	logging.Logger.Infof("%s exec: client watch", ctx.App.Version)
 
 	rCtx, err := context.New(ctx, true, true)
 	if err != nil {

@@ -23,16 +23,19 @@ import (
 
 //////////////////////////////////////////////////////////////////////////////////
 type RemoteCommand struct {
-	Data        []byte
-	Stdout      io.WriteCloser
-	SendChannel libchan.Sender
-	Verbose     bool
+	Data          []byte
+	Stdout        io.WriteCloser
+	SendChannel   libchan.Sender
+	Verbose       bool
+	Debug         bool
+	ClientVersion string
 }
 
 //////////////////////////////////////////////////////////////////////////////////
 type CommandResponse struct {
-	Status string
-	Error  string
+	ServerVersion string
+	Status        string
+	Error         string
 }
 
 type oprFunc func(pr promise.Promise, verbose bool) error
@@ -44,18 +47,20 @@ type Server struct {
 	tcpListener       net.Listener
 	host              string
 	port              string
+	serverVersion     string
 	noRedirect        bool
 	dataStore         *store.DataStore
 	OnPromiseReceived oprFunc
 }
 
 //////////////////////////////////////////////////////////////////////////////////
-func New(host string, port int, ds *store.DataStore, opr oprFunc, noRedirect bool) *Server {
+func New(host string, port int, ds *store.DataStore, opr oprFunc, noRedirect bool, serverVersion string) *Server {
 	serv := Server{
 		host:              host,
 		port:              fmt.Sprintf("%d", port),
 		dataStore:         ds,
 		noRedirect:        noRedirect,
+		serverVersion:     serverVersion,
 		OnPromiseReceived: opr,
 	}
 
@@ -218,6 +223,13 @@ func (p *Server) receive(t libchan.Transport) error {
 
 		logging.Logger.Info("promise received")
 
+		if cmd.ClientVersion != p.serverVersion {
+			logging.Logger.Warn("client/server version mismatch")
+			logging.Logger.Warn("server: %s", p.serverVersion)
+			logging.Logger.Warn("client: %s", cmd.ClientVersion)
+			logging.Logger.Warn("please update your server")
+		}
+
 		pr := promise.NamedPromise{}
 		enc := gob.NewDecoder(bytes.NewBuffer(cmd.Data))
 		if err := enc.Decode(&pr); err != nil {
@@ -225,7 +237,8 @@ func (p *Server) receive(t libchan.Transport) error {
 		}
 
 		res := CommandResponse{
-			Status: "execution successfull",
+			Status:        "execution successfull",
+			ServerVersion: p.serverVersion,
 		}
 
 		err := p.redirectOutput(cmd.Stdout, func() error {

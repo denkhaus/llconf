@@ -20,7 +20,7 @@ func newClientTestCommand() cli.Command {
 }
 
 func clientTest(ctx *cli.Context) error {
-	logging.Logger.Info("exec: client test")
+	logging.Logger.Infof("%s exec: client test", ctx.App.Version)
 
 	rCtx, err := context.New(ctx, true, true)
 	if err != nil {

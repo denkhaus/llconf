@@ -30,16 +30,6 @@ func main() {
 			Value:  9954,
 		},
 		cli.BoolFlag{
-			Name:   "verbose",
-			Usage:  "enable verbose output",
-			EnvVar: "LLCONF_VERBOSE",
-		},
-		cli.BoolFlag{
-			Name:   "debug",
-			Usage:  "enable debug output",
-			EnvVar: "LLCONF_DEBUG",
-		},
-		cli.BoolFlag{
 			Name:  "revision",
 			Usage: "Print revision",
 		},

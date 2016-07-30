@@ -41,18 +41,22 @@ import (
 
 //////////////////////////////////////////////////////////////////////////////////
 type RemoteCommand struct {
-	Data        []byte
-	Stdout      io.Reader
-	SendChannel libchan.Sender
-	Verbose     bool
+	Data          []byte
+	Stdout        io.Reader
+	SendChannel   libchan.Sender
+	Verbose       bool
+	Debug         bool
+	ClientVersion string
 }
 
 //////////////////////////////////////////////////////////////////////////////////
 type context struct {
-	Verbose            bool
+	verbose            bool
+	debug              bool
 	useSyslog          bool
 	noRedirect         bool
 	port               int
+	clientVersion      string
 	rootPromise        string
 	LibDir             string
 	InputDir           string
@@ -226,7 +230,14 @@ func (p *context) generateCert(privKeyPath string, certFilePath string) error {
 //////////////////////////////////////////////////////////////////////////////////
 func (p *context) StartServer() error {
 	logging.Logger.Debug("context: start server")
-	srv := server.New(p.host, p.port, p.dataStore, p.ExecPromise, p.noRedirect)
+	srv := server.New(
+		p.host,
+		p.port,
+		p.dataStore,
+		p.ExecPromise,
+		p.noRedirect,
+		p.clientVersion,
+	)
 
 	goagain.SetLogger(logging.Logger)
 
@@ -417,9 +428,14 @@ func (p *context) parseArguments(isClient bool, needInput bool) error {
 		p.runlogPath = filepath.Join(p.workDir, "run.log")
 	}
 
-	logging.SetDebug(p.appCtx.GlobalBool("debug"))
-	p.rootPromise = p.appCtx.GlobalString("promise")
-	p.Verbose = p.appCtx.GlobalBool("verbose")
+	p.clientVersion = p.appCtx.App.Version
+	p.verbose = p.appCtx.Bool("verbose")
+	p.debug = p.appCtx.Bool("debug")
+
+	logging.SetDebug(p.debug)
+	logging.Logger.Infof("verbose: %t debug: %t", p.verbose, p.debug)
+
+	p.rootPromise = p.appCtx.String("promise")
 	p.host = p.appCtx.GlobalString("host")
 	p.port = p.appCtx.GlobalInt("port")
 
@@ -556,10 +572,12 @@ func (p *context) SendPromise(tree promise.Promise) error {
 	}
 
 	cmd := RemoteCommand{
-		Data:        buf.Bytes(),
-		Stdout:      os.Stdout,
-		SendChannel: p.remoteSender,
-		Verbose:     p.Verbose,
+		Data:          buf.Bytes(),
+		Stdout:        os.Stdout,
+		SendChannel:   p.remoteSender,
+		Verbose:       p.verbose,
+		Debug:         p.debug,
+		ClientVersion: p.clientVersion,
 	}
 
 	stdout := os.Stdout

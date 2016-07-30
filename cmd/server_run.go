@@ -28,7 +28,7 @@ func newServerRunCommand() cli.Command {
 
 ////////////////////////////////////////////////////////////////////////////////
 func serverRun(ctx *cli.Context) error {
-	logging.Logger.Info("exec: server run")
+	logging.Logger.Infof("%s exec: server run", ctx.App.Version)
 
 	rCtx, err := context.New(ctx, false, false)
 	if err != nil {

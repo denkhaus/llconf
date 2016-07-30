@@ -17,6 +17,16 @@ func NewClientCommand() cli.Command {
 				EnvVar: "LLCONF_PROMISE",
 				Value:  "done",
 			},
+			cli.BoolFlag{
+				Name:   "verbose",
+				Usage:  "enable verbose output",
+				EnvVar: "LLCONF_VERBOSE",
+			},
+			cli.BoolFlag{
+				Name:   "debug",
+				Usage:  "enable debug output",
+				EnvVar: "LLCONF_DEBUG",
+			},
 		},
 		Subcommands: cli.Commands{
 			newClientRunCommand(),
@@ -24,7 +34,6 @@ func NewClientCommand() cli.Command {
 			newClientWatchCommand(),
 			newClientCertCommand(),
 		},
-		
 	}
 
 	return cd
