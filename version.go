@@ -1,6 +1,6 @@
 package main
 
 var (
-	AppVersion = "undefined"
-	Revision   = "undefined"
+	AppVersion = "version"
+	Revision   = "undefined - please build executable via make build"
 )

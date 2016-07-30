@@ -9,7 +9,10 @@ LIB_REPO_PATH		= ~/.llconf/lib
 DOCKER_IMAGE		= denkhaus/llconf
 
 ################################################################################
-all: build git-post wait release update-lib
+all: build 
+
+################################################################################
+build-release: build git-post wait release update-lib
 
 ################################################################################
 start-docker: build-docker start-docker
@@ -30,7 +33,7 @@ start-docker:
 	docker logs -f llconf
 
 ################################################################################
-push-container:
+push-docker:
 	docker push $(DOCKER_IMAGE)
 
 ################################################################################
@@ -46,7 +49,8 @@ git-pre:
 
 ################################################################################
 git-post:	
-	@echo "\n################# ---->  git push llconf"	
+	@echo "\n################# ---->  git push $(CURRENT_VERSION)"	
+	- git tag $(SHA)
 	git push --tags origin master	
 	
 ################################################################################
@@ -68,9 +72,7 @@ build: git-pre
 	@go build -o $(BUILD_TARGET) \
 		-ldflags "-w -s \
 		-X main.Revision=$(SHA) \
-		-X main.AppVersion=$(BUILD_VERSION)"	
-	@git tag -a $(SHA) -m $(BUILD_VERSION)
-	
+		-X main.AppVersion=$(BUILD_VERSION)"		
 	@echo "\n################# ---->  deploy $(BUILD_TARGET)"
 	@cp $(BUILD_TARGET) $(GOBIN)
 	

@@ -19,13 +19,8 @@ func NewClientCommand() cli.Command {
 			},
 			cli.BoolFlag{
 				Name:   "verbose",
-				Usage:  "enable verbose output",
+				Usage:  "enable verbose output in client mode and makes server response more verbose",
 				EnvVar: "LLCONF_VERBOSE",
-			},
-			cli.BoolFlag{
-				Name:   "debug",
-				Usage:  "enable debug output",
-				EnvVar: "LLCONF_DEBUG",
 			},
 		},
 		Subcommands: cli.Commands{

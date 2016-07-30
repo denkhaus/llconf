@@ -43,6 +43,11 @@ func main() {
 			Usage:  "output to syslog",
 			EnvVar: "LLCONF_SYSLOG",
 		},
+		cli.BoolFlag{
+			Name:   "debug",
+			Usage:  "enable debug output in client and server mode",
+			EnvVar: "LLCONF_DEBUG",
+		},
 	}
 
 	app.Commands = []cli.Command{

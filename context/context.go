@@ -428,13 +428,10 @@ func (p *context) parseArguments(isClient bool, needInput bool) error {
 		p.runlogPath = filepath.Join(p.workDir, "run.log")
 	}
 
-	p.clientVersion = p.appCtx.App.Version
-	p.verbose = p.appCtx.Bool("verbose")
-	p.debug = p.appCtx.Bool("debug")
-
+	p.debug = p.appCtx.GlobalBool("debug")
 	logging.SetDebug(p.debug)
-	logging.Logger.Infof("verbose: %t debug: %t", p.verbose, p.debug)
 
+	p.clientVersion = p.appCtx.App.Version
 	p.rootPromise = p.appCtx.String("promise")
 	p.host = p.appCtx.GlobalString("host")
 	p.port = p.appCtx.GlobalInt("port")
@@ -472,6 +469,8 @@ func (p *context) parseArguments(isClient bool, needInput bool) error {
 	logging.Logger.Infof("use library @ %q", p.LibDir)
 
 	if isClient {
+		p.verbose = p.appCtx.Bool("verbose")
+		logging.Logger.Infof("verbose: %t debug: %t", p.verbose, p.debug)
 
 		p.clientPrivKeyPath = path.Join(certDir, "client.privkey.pem")
 		p.clientCertFilePath = path.Join(certDir, "client.cert.pem")
@@ -500,11 +499,6 @@ func (p *context) parseArguments(isClient bool, needInput bool) error {
 			return errors.Annotate(err, "create data store")
 		}
 		p.dataStore = store
-	}
-
-	// when run as daemon, the home folder isn't set
-	if os.Getenv("HOME") == "" {
-		os.Setenv("HOME", p.workDir)
 	}
 
 	gob.Register(promise.NamedPromise{})
