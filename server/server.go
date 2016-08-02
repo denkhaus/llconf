@@ -223,13 +223,6 @@ func (p *Server) receive(t libchan.Transport) error {
 
 		logging.Logger.Info("promise received")
 
-		if cmd.ClientVersion != p.serverVersion {
-			logging.Logger.Warn("client/server version mismatch")
-			logging.Logger.Warn("server: %s", p.serverVersion)
-			logging.Logger.Warn("client: %s", cmd.ClientVersion)
-			logging.Logger.Warn("please update your server")
-		}
-
 		pr := promise.NamedPromise{}
 		enc := gob.NewDecoder(bytes.NewBuffer(cmd.Data))
 		if err := enc.Decode(&pr); err != nil {
@@ -242,6 +235,14 @@ func (p *Server) receive(t libchan.Transport) error {
 		}
 
 		err := p.redirectOutput(cmd.Stdout, func() error {
+
+			if cmd.ClientVersion != p.serverVersion {
+				logging.Logger.Warn("client/server version mismatch")
+				logging.Logger.Warn("server: %s", p.serverVersion)
+				logging.Logger.Warn("client: %s", cmd.ClientVersion)
+				logging.Logger.Warn("please update your server")
+			}
+
 			return p.OnPromiseReceived(pr, cmd.Verbose)
 		})
 

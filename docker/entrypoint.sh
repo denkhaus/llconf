@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -e
-
+LLCONF=/usr/local/bin/llconf
 CLIENT_CERT="/client.cert.pem"
 
 if [ ! -f "/initialized" ]
@@ -13,10 +13,10 @@ then
 	done
 	
 	echo "install client certificate"
-	/go/bin/llconf server cert add --id client --path $CLIENT_CERT
+	$LLCONF server cert add --id client --path $CLIENT_CERT
 	rm -f $CLIENT_CERT
 	touch /initialized
 fi
 
 echo "startup server"
-/go/bin/llconf -H 0.0.0.0 server run
+$LLCONF -H 0.0.0.0 server run

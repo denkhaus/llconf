@@ -1,4 +1,5 @@
 SHA 				= $(shell git rev-parse --short HEAD)
+HOSTNAME			= $(shell hostname)
 BUILD_VERSION 		= $(shell date -u +%y-%m-%d_%H\:%M\:%S)
 BUILD_TARGET		= bin/llconf
 
@@ -15,13 +16,11 @@ all: build
 build-release: build git-post wait release update-lib
 
 ################################################################################
-start-docker: build-docker start-docker
-
-################################################################################
-start-docker:		
+run-docker: build-docker		
 	- docker rm -f llconf
-	docker run -d --name llconf -p 9954:9954 $(DOCKER_IMAGE)
+	docker run -h ${HOSTNAME} -d --name llconf -p 9954:9954 $(DOCKER_IMAGE)
 	docker cp ~/.llconf/cert/client.cert.pem llconf:/client.cert.pem
+	# wait for entrypoint to startup
 	sleep 25
 	
 	rm -f /tmp/server.cert.pem
@@ -33,14 +32,18 @@ start-docker:
 	docker logs -f llconf
 
 ################################################################################
+start-docker:
+	@docker start -a llconf
+	
+################################################################################
 push-docker:
 	docker push $(DOCKER_IMAGE)
 
 ################################################################################
-build-docker: git-pre git-post
+build-docker: 
 	- docker rm -f llconf
 	- docker rmi -f $(DOCKER_IMAGE)
-	docker build -t $(DOCKER_IMAGE) docker/
+	docker build --build-arg REVISION=$(SHA) -t $(DOCKER_IMAGE) docker/
 
 ################################################################################
 git-pre:

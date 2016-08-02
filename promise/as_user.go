@@ -10,7 +10,7 @@ import (
 )
 
 type AsUser struct {
-	UserName string
+	UserName Argument
 	Promise  Promise
 }
 
@@ -21,9 +21,11 @@ func (p AsUser) Desc(arguments []Constant) string {
 func (p AsUser) Eval(arguments []Constant, ctx *Context, stack string) bool {
 	copyied_ctx := *ctx
 
-	u, err := user.Lookup(p.UserName)
+	userName := p.UserName.GetValue(arguments, &ctx.Vars)
+
+	u, err := user.Lookup(userName)
 	if err != nil {
-		panic(errors.Annotate(err, "lookup user"))
+		panic(errors.Annotatef(err, "lookup user %q", userName))
 	}
 
 	uid, err := strconv.Atoi(u.Uid)
@@ -54,5 +56,5 @@ func (p AsUser) New(children []Promise, args []Argument) (Promise, error) {
 		return nil, fmt.Errorf("(asuser) needs exactly on child promise, found %d", len(children))
 	}
 
-	return AsUser{args[0].String(), children[0]}, nil
+	return AsUser{args[0], children[0]}, nil
 }
