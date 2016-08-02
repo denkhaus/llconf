@@ -51,9 +51,11 @@ git-pre:
 	- git add -A && git commit -am "$(BUILD_VERSION)"	
 
 ################################################################################
-git-post:	
+git-post: delete-old-releases	
+	@echo "\n################# ---->  remove old tags"	
+	git tag --list | xargs git tag -d
 	@echo "\n################# ---->  git push $(CURRENT_VERSION)"	
-	- git tag $(SHA)
+	git tag $(SHA)
 	git push --tags origin master	
 	
 ################################################################################
@@ -88,7 +90,7 @@ update-lib:
 	git push origin master	
 
 ################################################################################
-release:
+release: 
 	@echo "\n################# ---->  push release for $(CURRENT_REVISION)"
 	@github-release release \
     -u denkhaus \
@@ -103,6 +105,10 @@ release:
     -t $(SHA) \
     -n "llconf-$(SHA)" \
     -f $(BUILD_TARGET)
+    
+################################################################################
+delete-old-releases:
+	- git tag --list | xargs -i github-release delete -u denkhaus -r llconf -t {}
     
 ################################################################################
 wait:
