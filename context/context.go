@@ -514,6 +514,7 @@ func (p *context) parseArguments(isClient bool, needInput bool) error {
 	gob.Register(promise.ArgGetter{})
 	gob.Register(promise.JoinArgument{})
 	gob.Register(promise.InDir{})
+	gob.Register(promise.AsUser{})
 	gob.Register(promise.RestartPromise{})
 	gob.Register(promise.SetvarPromise{})
 	gob.Register(promise.ReadvarPromise{})

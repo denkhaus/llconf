@@ -27,6 +27,7 @@ var builtins = map[string]promise.Promise{
 	"true":     promise.TruePromise{},
 	"false":    promise.FalsePromise{},
 	"eval":     promise.EvalPromise{},
+	"asuser":   promise.AsUser{},
 }
 
 type UnresolvedPromise struct {

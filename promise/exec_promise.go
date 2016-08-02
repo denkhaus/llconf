@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/denkhaus/llconf/logging"
@@ -65,7 +66,7 @@ func (p ExecPromise) New(children []Promise, args []Argument) (Promise, error) {
 }
 
 func (p ExecPromise) getCommand(arguments []Constant, ctx *Context) (*exec.Cmd, error) {
-	cmd := p.Arguments[0].GetValue(arguments, &ctx.Vars)
+	c := p.Arguments[0].GetValue(arguments, &ctx.Vars)
 	largs := p.Arguments[1:]
 
 	args := []string{}
@@ -77,25 +78,30 @@ func (p ExecPromise) getCommand(arguments []Constant, ctx *Context) (*exec.Cmd, 
 		return nil, errors.Annotate(err, "sanitize indir")
 	}
 
-	command := exec.Command(cmd, args...)
+	cmd := exec.Command(c, args...)
 
 	if ctx.InDir != "" {
 		// use (in_dir) for command lookup
-		if newcmd, err := exec.LookPath(filepath.Join(ctx.InDir, cmd)); err == nil {
-			command = exec.Command(newcmd, args...)
+		if newcmd, err := exec.LookPath(filepath.Join(ctx.InDir, c)); err == nil {
+			cmd = exec.Command(newcmd, args...)
 		}
 
-		command.Dir = ctx.InDir
+		cmd.Dir = ctx.InDir
 	} else {
-		command.Dir = os.Getenv("PWD")
+		cmd.Dir = os.Getenv("PWD")
 	}
 
-	command.Env = os.Environ()
+	if ctx.Credential != nil {
+		cmd.SysProcAttr = &syscall.SysProcAttr{}
+		cmd.SysProcAttr.Credential = ctx.Credential
+	}
+
+	cmd.Env = os.Environ()
 	for _, v := range ctx.Env {
-		command.Env = append(command.Env, v)
+		cmd.Env = append(cmd.Env, v)
 	}
 
-	return command, nil
+	return cmd, nil
 }
 
 func (p ExecPromise) Desc(arguments []Constant) string {

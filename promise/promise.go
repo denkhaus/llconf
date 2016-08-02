@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"syscall"
 
 	"github.com/juju/errors"
 )
@@ -25,6 +26,7 @@ type Argument interface {
 type Context struct {
 	Compile    compileFunc
 	ExecOutput *bytes.Buffer
+	Credential *syscall.Credential
 	Vars       Variables
 	Args       []string
 	Env        []string
