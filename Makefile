@@ -52,7 +52,9 @@ git-pre:
 
 ################################################################################
 git-post: delete-old-releases	
-	@echo "\n################# ---->  remove old tags"	
+	@echo "\n################# ---->  remove remote tags"	
+	git tag --list | xargs git push --delete origin
+	@echo "\n################# ---->  remove local tags"	
 	git tag --list | xargs git tag -d
 	@echo "\n################# ---->  git push $(CURRENT_VERSION)"	
 	git tag $(SHA)
