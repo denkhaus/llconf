@@ -74,10 +74,6 @@ func (p ExecPromise) getCommand(arguments []Constant, ctx *Context) (*exec.Cmd, 
 		args = append(args, argument.GetValue(arguments, &ctx.Vars))
 	}
 
-	if err := ctx.sanitizeInDir(); err != nil {
-		return nil, errors.Annotate(err, "sanitize indir")
-	}
-
 	cmd := exec.Command(c, args...)
 
 	if ctx.InDir != "" {
