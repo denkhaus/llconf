@@ -26,11 +26,11 @@ func (p InDir) Eval(arguments []Constant, ctx *Context, stack string) bool {
 	inDir := p.Dir.GetValue(arguments, &ctx.Vars)
 
 	copyied_ctx := *ctx
-	if ctx.InDir != nil {
-		if path.IsAbs(indir) {
+	if ctx.InDir != "" {
+		if path.IsAbs(inDir) {
 			copyied_ctx.InDir = inDir
 		} else {
-			copyied_ctx.InDir = path.Join(ctx.InDir, indir)
+			copyied_ctx.InDir = path.Join(ctx.InDir, inDir)
 		}
 
 	} else {
@@ -38,7 +38,7 @@ func (p InDir) Eval(arguments []Constant, ctx *Context, stack string) bool {
 	}
 
 	if err := sanitizeInDir(&copyied_ctx); err != nil {
-		return nil, errors.Annotate(err, "sanitize indir")
+		panic(errors.Annotate(err, "sanitize indir"))
 	}
 
 	return p.Promise.Eval(arguments, &copyied_ctx, stack)
