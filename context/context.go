@@ -636,8 +636,13 @@ func (p *context) ExecPromise(tree promise.Promise, verbose bool) (err error) {
 	endtime := time.Now().Local()
 
 	defer logging.Logger.Reset()
-	logging.Logger.Infof("%d changes and %d tests executed in %s",
-		logging.Logger.Changes, logging.Logger.Tests, endtime.Sub(starttime))
+	logging.Logger.Infof("%d changes and %d tests (%d errors | %d warnings) executed in %s",
+		logging.Logger.Changes,
+		logging.Logger.Tests,
+		logging.Logger.Errors,
+		logging.Logger.Warnings,
+		endtime.Sub(starttime),
+	)
 
 	writeRunLog(res, starttime, endtime, p.runlogPath)
 	return

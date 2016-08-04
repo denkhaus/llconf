@@ -11,8 +11,10 @@ var Logger *stdLogger
 
 type stdLogger struct {
 	*logrus.Logger
-	Changes int
-	Tests   int
+	Changes  int
+	Tests    int
+	Errors   int
+	Warnings int
 }
 
 func (p *stdLogger) Reset() {

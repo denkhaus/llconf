@@ -401,20 +401,23 @@ func (p SPipePromise) Eval(arguments []Constant, ctx *Context, stack string) boo
 
 ////////////////////////////////////////////////////////////////////////////////
 func processCmdOutput(ctx *Context) {
-	process := func(prefix string, buf *bytes.Buffer) {
+	process := func(prefix string, buf *bytes.Buffer, outFunc func(string, ...interface{})) {
 		str := util.NewStriplines()
 		str.Write(buf.Bytes())
 		str.Close()
 
 		if str.HasContent() {
 			if str.Lines() > 1 {
-				logging.Logger.Infof("%s:\n%s", prefix, str.String())
+				outFunc("%s:\n%s", prefix, str.String())
 			} else {
-				logging.Logger.Infof("%s: %s", prefix, str.String())
+				outFunc("%s: %s", prefix, str.String())
 			}
 		}
 	}
 
-	process("stdout", ctx.ExecStdout)
-	process("stderr", ctx.ExecStderr)
+	process("stdout", ctx.ExecStdout, logging.Logger.Infof)
+	process("stderr", ctx.ExecStderr, func(fmt string, args ...interface{}) {
+		logging.Logger.Errors++
+		logging.Logger.Errorf(fmt, args)
+	})
 }
