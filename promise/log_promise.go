@@ -53,8 +53,10 @@ func (p LogPromise) Eval(arguments []Constant, ctx *Context, stack string) bool 
 	case LogTypeInfo:
 		logging.Logger.Infof(fmtString, args...)
 	case LogTypeWarning:
+		logging.Logger.Warnings++
 		logging.Logger.Warnf(fmtString, args...)
 	case LogTypeError:
+		logging.Logger.Errors++
 		logging.Logger.Errorf(fmtString, args...)
 	}
 

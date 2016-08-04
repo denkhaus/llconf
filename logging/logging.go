@@ -20,6 +20,8 @@ type stdLogger struct {
 func (p *stdLogger) Reset() {
 	p.Changes = 0
 	p.Tests = 0
+	p.Warnings = 0
+	p.Errors = 0
 }
 
 func init() {
