@@ -406,10 +406,12 @@ func processCmdOutput(ctx *Context) {
 		str.Write(buf.Bytes())
 		str.Close()
 
-		if str.Lines() > 1 {
-			logging.Logger.Infof("%s:\n%s", prefix, str.String())
-		} else {
-			logging.Logger.Infof("%s: %s", prefix, str.String())
+		if str.HasContent() {
+			if str.Lines() > 1 {
+				logging.Logger.Infof("%s:\n%s", prefix, str.String())
+			} else {
+				logging.Logger.Infof("%s: %s", prefix, str.String())
+			}
 		}
 	}
 

@@ -50,6 +50,11 @@ func (w *Striplines) Lines() int {
 	return w.lines
 }
 
+func (w *Striplines) HasContent() bool {
+	cnt := strings.TrimSpace(w.String())
+	return len(cnt) > 0
+}
+
 func (w *Striplines) writeLn(line string) (n int, err error) {
 	if strings.TrimSpace(string(w.lastLine)) == "" &&
 		strings.TrimSpace(line) == "" {
