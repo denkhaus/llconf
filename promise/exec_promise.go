@@ -179,11 +179,7 @@ func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 		panic(errors.Annotate(err, "cmd start"))
 	}
 
-	var ret = true
-	if err := cmd.Wait(); err != nil {
-		ret = false
-	}
-
+	ret := (cmd.Wait() == nil)
 	//wait until output is processed
 	p.wgOutput.Wait()
 
@@ -282,9 +278,11 @@ func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 	last_cmd := commands[len(commands)-1]
 
 	ctx.ExecStdout.Reset()
+	ctx.ExecStderr.Reset()
+
 	last_cmd.Stdout = ctx.ExecStdout
 	last_cmd.Stderr = ctx.ExecStderr
-	cmdError := last_cmd.Run()
+	ret := (last_cmd.Run() == nil)
 
 	for _, command := range commands[:nCommands-1] {
 		command.Wait()
@@ -292,10 +290,10 @@ func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 
 	if ctx.Verbose || pipe_contains_change {
 		logging.Logger.Info(stack)
-		logging.Logger.Info(strings.Join(cstrings, " | "))
+		logging.Logger.Infof("[%s]-> %t", strings.Join(cstrings, " | "), ret)
 		processCmdOutput(ctx)
 	}
-	return (cmdError == nil)
+	return ret
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -383,9 +381,11 @@ func (p SPipePromise) Eval(arguments []Constant, ctx *Context, stack string) boo
 	last_cmd := commands[len(commands)-1]
 
 	ctx.ExecStdout.Reset()
+	ctx.ExecStderr.Reset()
+
 	last_cmd.Stdout = ctx.ExecStdout
 	last_cmd.Stderr = ctx.ExecStderr
-	cmdError := last_cmd.Run()
+	ret := (last_cmd.Run() == nil)
 
 	for _, command := range commands[:nCommands-1] {
 		command.Wait()
@@ -393,10 +393,10 @@ func (p SPipePromise) Eval(arguments []Constant, ctx *Context, stack string) boo
 
 	if ctx.Verbose || pipe_contains_change {
 		logging.Logger.Info(stack)
-		logging.Logger.Info(strings.Join(cstrings, " | "))
+		logging.Logger.Infof("[%s]-> %t", strings.Join(cstrings, " | "), ret)
 		processCmdOutput(ctx)
 	}
-	return (cmdError == nil)
+	return ret
 }
 
 ////////////////////////////////////////////////////////////////////////////////
