@@ -88,8 +88,9 @@ func (p ExecPromise) getCommand(arguments []Constant, ctx *Context) (*exec.Cmd, 
 	}
 
 	if ctx.Credential != nil {
-		cmd.SysProcAttr = &syscall.SysProcAttr{}
-		cmd.SysProcAttr.Credential = ctx.Credential
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			Credential: ctx.Credential,
+		}
 	}
 
 	cmd.Env = os.Environ()
@@ -139,13 +140,13 @@ func (p ExecPromise) processOutput(ctx *Context, cmd *exec.Cmd) error {
 		return errors.Annotate(err, "get stdout pipe")
 	}
 
-	errReader, err := cmd.StderrPipe()
-	if err != nil {
-		return errors.Annotate(err, "get stderr pipe")
-	}
+	//	errReader, err := cmd.StderrPipe()
+	//	if err != nil {
+	//		return errors.Annotate(err, "get stderr pipe")
+	//	}
 
 	go process(outReader)
-	go process(errReader)
+	//go process(errReader)
 
 	return nil
 }
@@ -254,7 +255,6 @@ func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 			panic(errors.Annotate(err, "get command"))
 		}
 
-		v.Type.IncrementExecCounter()
 		cstrings = append(cstrings, "["+v.Type.String()+"] "+strings.Join(cmd.Args, " "))
 		commands = append(commands, cmd)
 
@@ -274,6 +274,7 @@ func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 			panic(errors.Annotate(err, "start"))
 		}
 
+		p.Execs[i].Type.IncrementExecCounter()
 		commands[i+1].Stdin = out
 	}
 
@@ -281,7 +282,7 @@ func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 
 	ctx.ExecOutput.Reset()
 	last_cmd.Stdout = ctx.ExecOutput
-	last_cmd.Stderr = ctx.ExecOutput
+	//last_cmd.Stderr = ctx.ExecOutput
 	cmdError := last_cmd.Run()
 
 	for _, command := range commands[:nCommands-1] {

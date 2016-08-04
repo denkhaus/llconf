@@ -6,6 +6,7 @@ import (
 	"os/user"
 	"path"
 	"path/filepath"
+	"strconv"
 
 	"github.com/juju/errors"
 )
@@ -59,24 +60,34 @@ func (p InDir) New(children []Promise, args []Argument) (Promise, error) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-func sanitizeInDir(ctx *Context) error {
+func sanitizeInDir(ctx *Context) (err error) {
 	if ctx.InDir == "" {
 		return nil
 	}
 
+	// HOME
 	if len(ctx.InDir) >= 2 && ctx.InDir[:2] == "~/" {
-		usr, err := user.Current()
-		if err != nil {
-			return errors.Annotate(err, "get current user")
+
+		var usr *user.User
+		if ctx.Credential != nil {
+			usr, err = user.LookupId(strconv.Itoa(int(ctx.Credential.Uid)))
+			if err != nil {
+				return errors.Annotate(err, "get user by uid")
+			}
+		} else {
+			usr, err = user.Current()
+			if err != nil {
+				return errors.Annotate(err, "get current user")
+			}
 		}
+
 		ctx.InDir = filepath.Join(usr.HomeDir, ctx.InDir[2:])
 	}
 
-	abs, err := filepath.Abs(ctx.InDir)
+	ctx.InDir, err = filepath.Abs(ctx.InDir)
 	if err != nil {
 		return errors.Annotate(err, "make indir path absolute")
 	}
-	ctx.InDir = abs
 
 	fs, err := os.Stat(ctx.InDir)
 	if err != nil {

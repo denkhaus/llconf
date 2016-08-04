@@ -238,8 +238,8 @@ func (p *Server) receive(t libchan.Transport) error {
 
 			if cmd.ClientVersion != p.serverVersion {
 				logging.Logger.Warn("client/server version mismatch")
-				logging.Logger.Warn("server: %s", p.serverVersion)
-				logging.Logger.Warn("client: %s", cmd.ClientVersion)
+				logging.Logger.Warnf("server: %s", p.serverVersion)
+				logging.Logger.Warnf("client: %s", cmd.ClientVersion)
 				logging.Logger.Warn("please update your server")
 			}
 

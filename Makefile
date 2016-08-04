@@ -52,25 +52,16 @@ git-pre:
 
 ################################################################################
 git-post: delete-old-releases	
-	@echo "\n################# ---->  remove remote tags"	
-	git tag --list | xargs git push --delete origin
-	@echo "\n################# ---->  remove local tags"	
-	git tag --list | xargs git tag -d
+	@echo "\n################# ---->  remove remote and local tags"	
+	@git tag --list | xargs git push --delete origin	
+	@git tag --list | xargs git tag -d
 	@echo "\n################# ---->  git push $(CURRENT_VERSION)"	
-	git tag $(SHA)
+	@git tag $(SHA)
 	git push --tags origin master	
 	
 ################################################################################
 debug:
 	docker run -it --rm --entrypoint /bin/bash $(DOCKER_IMAGE) 
-
-################################################################################
-watch:
-	llconf client  -i ./test/input watch
-	
-################################################################################
-run:
-	llconf client  -i ./test/input run
 
 ################################################################################
 build: git-pre
@@ -110,7 +101,7 @@ release:
     
 ################################################################################
 delete-old-releases:
-	- git tag --list | xargs -i github-release delete -u denkhaus -r llconf -t {}
+	- git tag --list | xargs github-release delete -u denkhaus -r llconf -t 
     
 ################################################################################
 wait:
