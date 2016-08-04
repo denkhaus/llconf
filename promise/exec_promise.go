@@ -417,7 +417,7 @@ func processCmdOutput(ctx *Context) {
 
 	process("stdout", ctx.ExecStdout, logging.Logger.Infof)
 	process("stderr", ctx.ExecStderr, func(fmt string, args ...interface{}) {
-		logging.Logger.Errors++
-		logging.Logger.Errorf(fmt, args...)
+		logging.Logger.Warnings++
+		logging.Logger.Warnf(fmt, args...)
 	})
 }
