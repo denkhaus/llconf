@@ -519,6 +519,7 @@ func (p *context) parseArguments(isClient bool, needInput bool) error {
 	gob.Register(promise.SetvarPromise{})
 	gob.Register(promise.ReadvarPromise{})
 	gob.Register(promise.VarGetter{})
+	gob.Register(promise.LogPromise{})
 	gob.Register(promise.Constant("const"))
 
 	return nil

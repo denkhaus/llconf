@@ -13,7 +13,7 @@ DOCKER_IMAGE		= denkhaus/llconf
 all: build 
 
 ################################################################################
-build-release: build git-post wait release update-lib
+release: build git-post wait push-release update-lib
 
 ################################################################################
 run-docker: build-docker		
@@ -83,7 +83,7 @@ update-lib:
 	git push origin master	
 
 ################################################################################
-release: 
+push-release: 
 	@echo "\n################# ---->  push release for $(CURRENT_REVISION)"
 	@github-release release \
     -u denkhaus \
