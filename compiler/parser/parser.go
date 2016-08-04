@@ -28,9 +28,9 @@ var builtins = map[string]promise.Promise{
 	"false":    promise.FalsePromise{},
 	"eval":     promise.EvalPromise{},
 	"asuser":   promise.AsUser{},
-	"error":    promise.LogPromise{Type: promise.LogTypError},
-	"warning":  promise.LogPromise{Type: promise.LogTypWarning},
-	"info":     promise.LogPromise{Type: promise.LogTypInfo},
+	"error":    promise.LogPromise{Type: promise.LogTypeError},
+	"warning":  promise.LogPromise{Type: promise.LogTypeWarning},
+	"info":     promise.LogPromise{Type: promise.LogTypeInfo},
 }
 
 type UnresolvedPromise struct {
