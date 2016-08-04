@@ -60,7 +60,7 @@ func (w *Striplines) writeLn(line string) (n int, err error) {
 	}
 }
 
-func NewStripLines() *Striplines {
+func NewStriplines() *Striplines {
 	str := Striplines{Buffer: &bytes.Buffer{}}
 	return &str
 }
