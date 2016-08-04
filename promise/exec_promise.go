@@ -2,6 +2,7 @@ package promise
 
 import (
 	"bufio"
+	"bytes"
 	"io"
 	"os"
 	"os/exec"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/denkhaus/llconf/logging"
+	"github.com/denkhaus/llconf/util"
 	"github.com/juju/errors"
 )
 
@@ -188,12 +190,7 @@ func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 	if ctx.Verbose || p.Type == ExecChange {
 		logging.Logger.Info(stack)
 		logging.Logger.Infof("[%s %s]-> %t", p.Type.String(), strings.Join(cmd.Args, " "), ret)
-		if ctx.ExecStdout.Len() > 0 {
-			logging.Logger.Infof("stdout:\n%s", ctx.ExecStdout.String())
-		}
-		if ctx.ExecStderr.Len() > 0 {
-			logging.Logger.Errorf("stderr:\n%s", ctx.ExecStderr.String())
-		}
+		processCmdOutput(ctx)
 	}
 
 	p.Type.IncrementExecCounter()
@@ -296,12 +293,7 @@ func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 	if ctx.Verbose || pipe_contains_change {
 		logging.Logger.Info(stack)
 		logging.Logger.Info(strings.Join(cstrings, " | "))
-		if ctx.ExecStdout.Len() > 0 {
-			logging.Logger.Infof("stdout:\n%s", ctx.ExecStdout.String())
-		}
-		if ctx.ExecStderr.Len() > 0 {
-			logging.Logger.Errorf("stderr:\n%s", ctx.ExecStderr.String())
-		}
+		processCmdOutput(ctx)
 	}
 	return (cmdError == nil)
 }
@@ -402,9 +394,25 @@ func (p SPipePromise) Eval(arguments []Constant, ctx *Context, stack string) boo
 	if ctx.Verbose || pipe_contains_change {
 		logging.Logger.Info(stack)
 		logging.Logger.Info(strings.Join(cstrings, " | "))
-		if ctx.ExecStdout.Len() > 0 {
-			logging.Logger.Info(ctx.ExecStdout.String())
-		}
+		processCmdOutput(ctx)
 	}
 	return (cmdError == nil)
+}
+
+////////////////////////////////////////////////////////////////////////////////
+func processCmdOutput(ctx *Context) {
+	process := func(prefix string, buf *bytes.Buffer) {
+		str := util.NewStriplines()
+		str.Write(buf.Bytes())
+		str.Close()
+
+		if str.Lines() > 1 {
+			logging.Logger.Infof("%s:\n%s", prefix, str.String())
+		} else {
+			logging.Logger.Infof("%s: %s", prefix, str.String())
+		}
+	}
+
+	process("stdout", ctx.ExecStdout)
+	process("stderr", ctx.ExecStderr)
 }

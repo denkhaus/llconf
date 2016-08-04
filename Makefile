@@ -40,8 +40,7 @@ push-docker:
 	docker push $(DOCKER_IMAGE)
 
 ################################################################################
-build-docker: 
-	- docker rm -f llconf
+build-docker: 	
 	- docker rmi -f $(DOCKER_IMAGE)
 	docker build --build-arg REVISION=$(SHA) -t $(DOCKER_IMAGE) docker/
 
