@@ -33,7 +33,7 @@ func TestSetNewEval(t *testing.T) {
 
 	var sout bytes.Buffer
 	ctx := NewContext()
-	ctx.ExecOutput = &sout
+	ctx.ExecStdout = &sout
 
 	name := "setenv"
 	value := "blafasel"

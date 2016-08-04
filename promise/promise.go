@@ -20,7 +20,8 @@ type Argument interface {
 
 type Context struct {
 	Compile    compileFunc
-	ExecOutput *bytes.Buffer
+	ExecStdout *bytes.Buffer
+	ExecStderr *bytes.Buffer
 	Credential *syscall.Credential
 	Vars       Variables
 	Args       []string

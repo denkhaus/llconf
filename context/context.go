@@ -620,7 +620,8 @@ func (p *context) ExecPromise(tree promise.Promise, verbose bool) (err error) {
 	vars["executable"] = filepath.Clean(os.Args[0])
 
 	ctx := promise.Context{
-		ExecOutput: &bytes.Buffer{},
+		ExecStdout: &bytes.Buffer{},
+		ExecStderr: &bytes.Buffer{},
 		Compile:    compiler.Compile,
 		Vars:       vars,
 		Args:       os.Args[1:],

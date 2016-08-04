@@ -44,7 +44,7 @@ func (p ReadvarPromise) Desc(arguments []Constant) string {
 func (p ReadvarPromise) Eval(arguments []Constant, ctx *Context, stack string) bool {
 	result := p.Exec.Eval(arguments, ctx, stack)
 	name := p.VarName.GetValue(arguments, &ctx.Vars)
-	value := ctx.ExecOutput.String()
+	value := ctx.ExecStdout.String()
 
 	val := strings.TrimSpace(value)
 	if v, ok := ctx.Vars[name]; ok && v != val {

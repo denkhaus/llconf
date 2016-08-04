@@ -17,7 +17,7 @@ func TestReadvarPromise(t *testing.T) {
 	var sout bytes.Buffer
 
 	ctx := NewContext()
-	ctx.ExecOutput = &sout
+	ctx.ExecStdout = &sout
 
 	promise.Eval([]Constant{}, &ctx, "readvar")
 

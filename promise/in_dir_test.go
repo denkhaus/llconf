@@ -29,7 +29,7 @@ func TestEval(t *testing.T) {
 	var sout bytes.Buffer
 
 	ctx := NewContext()
-	ctx.ExecOutput = &sout
+	ctx.ExecStdout = &sout
 
 	if d.Eval([]Constant{}, &ctx, "indir") {
 		if ctx.InDir == "/var" {

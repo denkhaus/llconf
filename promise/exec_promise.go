@@ -119,10 +119,11 @@ func (p ExecPromise) Desc(arguments []Constant) string {
 
 ////////////////////////////////////////////////////////////////////////////////
 func (p ExecPromise) processOutput(ctx *Context, cmd *exec.Cmd) error {
-	ctx.ExecOutput.Reset()
-	cw := bufio.NewWriter(ctx.ExecOutput)
+	ctx.ExecStdout.Reset()
+	ctx.ExecStderr.Reset()
 
-	process := func(reader io.Reader) {
+	process := func(reader io.Reader, writer io.Writer) {
+		cw := bufio.NewWriter(writer)
 		p.wgOutput.Add(1)
 		defer func() {
 			cw.Flush()
@@ -140,13 +141,13 @@ func (p ExecPromise) processOutput(ctx *Context, cmd *exec.Cmd) error {
 		return errors.Annotate(err, "get stdout pipe")
 	}
 
-	//	errReader, err := cmd.StderrPipe()
-	//	if err != nil {
-	//		return errors.Annotate(err, "get stderr pipe")
-	//	}
+	errReader, err := cmd.StderrPipe()
+	if err != nil {
+		return errors.Annotate(err, "get stderr pipe")
+	}
 
-	go process(outReader)
-	//go process(errReader)
+	go process(outReader, ctx.ExecStdout)
+	go process(errReader, ctx.ExecStderr)
 
 	return nil
 }
@@ -187,8 +188,11 @@ func (p ExecPromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 	if ctx.Verbose || p.Type == ExecChange {
 		logging.Logger.Info(stack)
 		logging.Logger.Infof("[%s %s]-> %t", p.Type.String(), strings.Join(cmd.Args, " "), ret)
-		if ctx.ExecOutput.Len() > 0 {
-			logging.Logger.Infof("output:\n%s", ctx.ExecOutput.String())
+		if ctx.ExecStdout.Len() > 0 {
+			logging.Logger.Infof("stdout:\n%s", ctx.ExecStdout.String())
+		}
+		if ctx.ExecStderr.Len() > 0 {
+			logging.Logger.Errorf("stderr:\n%s", ctx.ExecStderr.String())
 		}
 	}
 
@@ -280,9 +284,9 @@ func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 
 	last_cmd := commands[len(commands)-1]
 
-	ctx.ExecOutput.Reset()
-	last_cmd.Stdout = ctx.ExecOutput
-	//last_cmd.Stderr = ctx.ExecOutput
+	ctx.ExecStdout.Reset()
+	last_cmd.Stdout = ctx.ExecStdout
+	last_cmd.Stderr = ctx.ExecStderr
 	cmdError := last_cmd.Run()
 
 	for _, command := range commands[:nCommands-1] {
@@ -292,8 +296,11 @@ func (p PipePromise) Eval(arguments []Constant, ctx *Context, stack string) bool
 	if ctx.Verbose || pipe_contains_change {
 		logging.Logger.Info(stack)
 		logging.Logger.Info(strings.Join(cstrings, " | "))
-		if ctx.ExecOutput.Len() > 0 {
-			logging.Logger.Info(ctx.ExecOutput.String())
+		if ctx.ExecStdout.Len() > 0 {
+			logging.Logger.Infof("stdout:\n%s", ctx.ExecStdout.String())
+		}
+		if ctx.ExecStderr.Len() > 0 {
+			logging.Logger.Errorf("stderr:\n%s", ctx.ExecStderr.String())
 		}
 	}
 	return (cmdError == nil)
@@ -383,9 +390,9 @@ func (p SPipePromise) Eval(arguments []Constant, ctx *Context, stack string) boo
 
 	last_cmd := commands[len(commands)-1]
 
-	ctx.ExecOutput.Reset()
-	last_cmd.Stdout = ctx.ExecOutput
-	last_cmd.Stderr = ctx.ExecOutput
+	ctx.ExecStdout.Reset()
+	last_cmd.Stdout = ctx.ExecStdout
+	last_cmd.Stderr = ctx.ExecStderr
 	cmdError := last_cmd.Run()
 
 	for _, command := range commands[:nCommands-1] {
@@ -395,8 +402,8 @@ func (p SPipePromise) Eval(arguments []Constant, ctx *Context, stack string) boo
 	if ctx.Verbose || pipe_contains_change {
 		logging.Logger.Info(stack)
 		logging.Logger.Info(strings.Join(cstrings, " | "))
-		if ctx.ExecOutput.Len() > 0 {
-			logging.Logger.Info(ctx.ExecOutput.String())
+		if ctx.ExecStdout.Len() > 0 {
+			logging.Logger.Info(ctx.ExecStdout.String())
 		}
 	}
 	return (cmdError == nil)
