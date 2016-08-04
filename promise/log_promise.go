@@ -22,11 +22,11 @@ type LogPromise struct {
 
 func (p LogPromise) New(children []Promise, args []Argument) (Promise, error) {
 	if len(children) != 0 {
-		return nil, errors.New("a (info|error|warning) promise cannot have nested promises")
+		return nil, errors.New("a (info|error|warn) promise cannot have nested promises")
 	}
 
 	if len(args) < 1 {
-		return nil, errors.New("a (info|error|warning) promise needs at least one format string argument")
+		return nil, errors.New("a (info|error|warn) promise needs at least one format string argument")
 	}
 
 	return LogPromise{Type: p.Type, Args: args}, nil
@@ -38,7 +38,7 @@ func (p LogPromise) Desc(arguments []Constant) string {
 		args[i] = v.GetValue(arguments, &Variables{})
 	}
 
-	return "(info|error|warning " + strings.Join(args, " ") + ")"
+	return "(info|error|warn " + strings.Join(args, " ") + ")"
 }
 
 func (p LogPromise) Eval(arguments []Constant, ctx *Context, stack string) bool {

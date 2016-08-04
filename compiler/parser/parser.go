@@ -29,7 +29,7 @@ var builtins = map[string]promise.Promise{
 	"eval":     promise.EvalPromise{},
 	"asuser":   promise.AsUser{},
 	"error":    promise.LogPromise{Type: promise.LogTypeError},
-	"warning":  promise.LogPromise{Type: promise.LogTypeWarning},
+	"warn":     promise.LogPromise{Type: promise.LogTypeWarning},
 	"info":     promise.LogPromise{Type: promise.LogTypeInfo},
 }
 
