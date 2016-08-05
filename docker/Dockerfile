@@ -11,5 +11,9 @@ RUN chmod u+x /usr/local/bin/llconf
 ADD entrypoint.sh /entrypoint.sh
 RUN chmod u+x /entrypoint.sh
 
+#install forego
+ADD Procfile /Procfile
+RUN curl -L https://bin.equinox.io/c/ekMN3bCZFUn/forego-stable-linux-amd64.tgz | tar -xzf - -C /usr/local/bin  		
+
 EXPOSE 9954
 ENTRYPOINT ["/entrypoint.sh"]

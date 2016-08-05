@@ -14,6 +14,8 @@ import (
 	"runtime/debug"
 	"syscall"
 
+	"gopkg.in/tomb.v2"
+
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -290,7 +292,9 @@ func (p *context) StartServer() error {
 	}
 
 	if err := srv.Close(); nil != err {
-		return errors.Annotate(err, "server close")
+		if err != tomb.ErrDying {
+			return errors.Annotate(err, "close server")
+		}
 	}
 
 	time.Sleep(1 * time.Second)

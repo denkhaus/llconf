@@ -19,4 +19,4 @@ then
 fi
 
 echo "startup server"
-$LLCONF -H 0.0.0.0 server run
+forego start 

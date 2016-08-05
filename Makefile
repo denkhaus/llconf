@@ -83,7 +83,7 @@ update-lib:
 
 ################################################################################
 push-release: 
-	@echo "\n################# ---->  push release for $(CURRENT_REVISION)"
+	@echo "\n################# ---->  create release for $(CURRENT_REVISION)"
 	@github-release release \
     -u denkhaus \
     -r llconf \
@@ -91,6 +91,7 @@ push-release:
     -n "$(CURRENT_VERSION)" \
     -d "llconf - configuration managment solution"
 	
+	@echo "\n################# ---->  upload release for $(CURRENT_REVISION)"
 	@github-release upload \
     -u denkhaus \
     -r llconf \
