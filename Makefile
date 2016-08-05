@@ -4,6 +4,7 @@ BUILD_VERSION 		= $(shell date -u +%y-%m-%d_%H\:%M\:%S)
 
 BUILD_TARGET_AMD64	= bin/llconf-linux-amd64
 BUILD_TARGET_ARM64	= bin/llconf-linux-arm64
+BUILD_TARGET_ARM	= bin/llconf-linux-arm
 
 CURRENT_VERSION     = $(shell llconf -v)
 CURRENT_REVISION    = $(shell llconf --revision)
@@ -87,6 +88,7 @@ debug:
 
 ################################################################################
 build: git-pre
+	$(call build_release,linux,arm,$(BUILD_TARGET_ARM))
 	$(call build_release,linux,arm64,$(BUILD_TARGET_ARM64))
 	$(call build_release,linux,amd64,$(BUILD_TARGET_AMD64))
 	@echo "\n################# ---->  deploy $(BUILD_TARGET_AMD64)"
@@ -98,7 +100,7 @@ update-lib:
 	@cd $(LIB_REPO_PATH) && \
 	echo $(CURRENT_REVISION) > .llconf_rev && \
 	git add -A && git commit -am "update current rev: $(CURRENT_REVISION)" && \
-	@git push origin master	
+	git push origin master	
 
 ################################################################################
 push-release: 
@@ -110,7 +112,8 @@ push-release:
     -n "$(CURRENT_VERSION)" \
     -d "llconf - configuration managment solution"
 	
-	$(call upload_release,linux,arm64,$(BUILD_TARGET_ARM64))
+	$(call upload_release,linux,arm,$(BUILD_TARGET_ARM))
+	$(call upload_release,linux,arm64,$(BUILD_TARGET_ARM64))	
 	$(call upload_release,linux,amd64,$(BUILD_TARGET_AMD64))	
     
 ################################################################################
