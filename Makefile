@@ -1,13 +1,36 @@
 SHA 				= $(shell git rev-parse --short HEAD)
 HOSTNAME			= $(shell hostname)
 BUILD_VERSION 		= $(shell date -u +%y-%m-%d_%H\:%M\:%S)
-BUILD_TARGET		= bin/llconf
+
+BUILD_TARGET_AMD64	= bin/llconf-linux-amd64
+BUILD_TARGET_ARM64	= bin/llconf-linux-arm64
 
 CURRENT_VERSION     = $(shell llconf -v)
 CURRENT_REVISION    = $(shell llconf --revision)
 
 LIB_REPO_PATH		= ~/.llconf/lib
 DOCKER_IMAGE		= denkhaus/llconf
+
+################################################################################
+define build_release
+	@echo "\n\n################# ----> build release for os $1 arch $2 -> target $3"	
+	@rm -f $3
+	env GOOS=$1 GOARCH=$2 go build -o $3 \
+		-ldflags "-w -s \
+		-X main.Revision=$(SHA) \
+		-X main.AppVersion=$(BUILD_VERSION)"			
+endef
+
+################################################################################
+define upload_release
+	@echo "\n\n################# ----> upload release $(CURRENT_REVISION) for $1/$2 -> target $3"	
+	@github-release upload \
+	    -u denkhaus \
+	    -r llconf \
+	    -t $(SHA) \
+	    -n "llconf-$(SHA)-$1-$2" \
+    	-f $3
+endef
 
 ################################################################################
 all: build 
@@ -56,7 +79,7 @@ git-post: delete-old-releases
 	@git tag --list | xargs git tag -d
 	@echo "\n################# ---->  git push $(CURRENT_VERSION)"	
 	@git tag $(SHA)
-	git push --tags origin master	
+	@git push --tags origin master	
 	
 ################################################################################
 debug:
@@ -64,22 +87,18 @@ debug:
 
 ################################################################################
 build: git-pre
-	@echo "\n################# ---->  build $(BUILD_TARGET)"
-	@rm -f $(BUILD_TARGET)
-	@go build -o $(BUILD_TARGET) \
-		-ldflags "-w -s \
-		-X main.Revision=$(SHA) \
-		-X main.AppVersion=$(BUILD_VERSION)"		
-	@echo "\n################# ---->  deploy $(BUILD_TARGET)"
-	@cp $(BUILD_TARGET) $(GOBIN)
+	$(call build_release, "linux", "arm64", $(BUILD_TARGET_ARM64))
+	$(call build_release, "linux", "amd64", $(BUILD_TARGET_AMD64))
+	@echo "\n################# ---->  deploy $(BUILD_TARGET_AMD64)"
+	@cp $(BUILD_TARGET_AMD64) $(GOBIN)/llconf
 	
 ################################################################################
 update-lib:	
 	@echo "\n################# ---->  update lib revision to $(CURRENT_REVISION)"
-	cd $(LIB_REPO_PATH) && \
+	@cd $(LIB_REPO_PATH) && \
 	echo $(CURRENT_REVISION) > .llconf_rev && \
 	git add -A && git commit -am "update current rev: $(CURRENT_REVISION)" && \
-	git push origin master	
+	@git push origin master	
 
 ################################################################################
 push-release: 
@@ -91,13 +110,8 @@ push-release:
     -n "$(CURRENT_VERSION)" \
     -d "llconf - configuration managment solution"
 	
-	@echo "\n################# ---->  upload release for $(CURRENT_REVISION)"
-	@github-release upload \
-    -u denkhaus \
-    -r llconf \
-    -t $(SHA) \
-    -n "llconf-$(SHA)" \
-    -f $(BUILD_TARGET)
+	$(call upload_release, "linux", "arm64", $(BUILD_TARGET_ARM64))
+	$(call upload_release, "linux", "amd64", $(BUILD_TARGET_AMD64))	
     
 ################################################################################
 delete-old-releases:

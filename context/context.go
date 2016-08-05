@@ -290,9 +290,7 @@ func (p *context) StartServer() error {
 	}
 
 	if err := srv.Close(); nil != err {
-		//if err != tomb.ErrDying {
 		return errors.Annotate(err, "close server")
-		//}
 	}
 
 	time.Sleep(1 * time.Second)
