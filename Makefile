@@ -13,7 +13,7 @@ DOCKER_IMAGE		= denkhaus/llconf
 
 ################################################################################
 define build_release
-	@echo "\n\n################# ----> build release for os $1 arch $2 -> target $3"	
+	@echo "\n\n################# ----> build release $(CURRENT_REVISION) for $1/$2 -> target $3	
 	@rm -f $3
 	env GOOS=$1 GOARCH=$2 go build -o $3 \
 		-ldflags "-w -s \
@@ -87,8 +87,8 @@ debug:
 
 ################################################################################
 build: git-pre
-	$(call build_release,"linux","arm64", $(BUILD_TARGET_ARM64))
-	$(call build_release,"linux","amd64", $(BUILD_TARGET_AMD64))
+	$(call build_release,linux,arm64,$(BUILD_TARGET_ARM64))
+	$(call build_release,linux,amd64,$(BUILD_TARGET_AMD64))
 	@echo "\n################# ---->  deploy $(BUILD_TARGET_AMD64)"
 	@cp $(BUILD_TARGET_AMD64) $(GOBIN)/llconf
 	
@@ -110,8 +110,8 @@ push-release:
     -n "$(CURRENT_VERSION)" \
     -d "llconf - configuration managment solution"
 	
-	$(call upload_release, "linux", "arm64", $(BUILD_TARGET_ARM64))
-	$(call upload_release, "linux", "amd64", $(BUILD_TARGET_AMD64))	
+	$(call upload_release,linux,arm64,$(BUILD_TARGET_ARM64))
+	$(call upload_release,linux,amd64,$(BUILD_TARGET_AMD64))	
     
 ################################################################################
 delete-old-releases:
