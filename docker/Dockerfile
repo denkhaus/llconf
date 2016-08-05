@@ -11,7 +11,7 @@ RUN curl -L https://bin.equinox.io/c/ekMN3bCZFUn/forego-stable-linux-amd64.tgz |
 
 #install llconf
 ARG REVISION
-RUN curl -L  https://github.com/denkhaus/llconf/releases/download/${REVISION}/llconf-${REVISION} -o /usr/local/bin/llconf
+RUN curl -L  https://github.com/denkhaus/llconf/releases/download/${REVISION}/llconf-${REVISION}-linux-amd64 -o /usr/local/bin/llconf
 RUN chmod u+x /usr/local/bin/llconf
 ADD entrypoint.sh /entrypoint.sh
 RUN chmod u+x /entrypoint.sh	

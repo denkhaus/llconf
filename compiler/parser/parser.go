@@ -123,14 +123,14 @@ func parseGetter(l *lexer.Lexer) (promise.Argument, error) {
 			switch typ {
 			case "arg":
 				if i, e := strconv.Atoi(t.Val); e == nil {
-					getter = promise.ArgGetter{i}
+					getter = promise.ArgGetter{Position: i}
 				} else {
 					return nil, e
 				}
 			case "env":
-				getter = promise.EnvGetter{t.Val}
+				getter = promise.EnvGetter{Name: t.Val}
 			case "var":
-				getter = promise.VarGetter{t.Val}
+				getter = promise.VarGetter{Name: t.Val}
 			default:
 				return nil, fmt.Errorf("unknown getter type: %q", t.Val)
 			}
@@ -218,7 +218,7 @@ func (p *UnresolvedPromise) parse(l *lexer.Lexer) error {
 			return nil
 		}
 	}
-	return nil
+
 }
 
 type Tree map[string]UnresolvedPromise
@@ -245,7 +245,6 @@ func (tree Tree) generatePromises(l *lexer.Lexer) error {
 			return errors.New(t.Val + " " + t.Pos.String())
 		}
 	}
-	return errors.New("unknown error")
 }
 
 func Parse(inputs []Input) (map[string]promise.Promise, error) {
