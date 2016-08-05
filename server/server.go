@@ -212,6 +212,9 @@ func (p *Server) receive(t libchan.Transport) error {
 	logging.Logger.Debug("server: receive channel available")
 
 	for {
+		res := CommandResponse{
+			ServerVersion: p.serverVersion,
+		}
 
 		cmd := RemoteCommand{}
 		if err := receiver.Receive(&cmd); err != nil {
@@ -226,26 +229,32 @@ func (p *Server) receive(t libchan.Transport) error {
 		pr := promise.NamedPromise{}
 		enc := gob.NewDecoder(bytes.NewBuffer(cmd.Data))
 		if err := enc.Decode(&pr); err != nil {
-			return errors.Annotate(err, "decode")
-		}
+			err = errors.Annotate(err, "decode command")
+			logging.Logger.Error(err)
 
-		res := CommandResponse{
-			Status:        "execution successfull",
-			ServerVersion: p.serverVersion,
+			res.Status = "error decoding command"
+			res.Error = err.Error()
+
+			logging.Logger.Info("send error response")
+			if err := cmd.SendChannel.Send(&res); err != nil {
+				return errors.Annotate(err, "send")
+			}
+
+			return nil
 		}
 
 		err := p.redirectOutput(cmd.Stdout, func() error {
-
 			if cmd.ClientVersion != p.serverVersion {
 				logging.Logger.Warn("client/server version mismatch")
-				logging.Logger.Warnf("server: %s", p.serverVersion)
-				logging.Logger.Warnf("client: %s", cmd.ClientVersion)
+				logging.Logger.Warnf("server: %s client: %s", p.serverVersion, cmd.ClientVersion)
 				logging.Logger.Warn("please update your server")
+				logging.Logger.Warnings++
 			}
 
 			return p.OnPromiseReceived(pr, cmd.Verbose)
 		})
 
+		res.Status = "execution successfull"
 		if err != nil {
 			res.Error = err.Error()
 			res.Status = "execution aborted with error"
