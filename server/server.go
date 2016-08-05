@@ -315,7 +315,9 @@ func (p *Server) run() error {
 
 			t := spdy.NewTransport(pr)
 			if err := p.receive(t); err != nil {
-				return errors.Annotate(err, "new receive")
+				if err != tomb.ErrDying {
+					return errors.Annotate(err, "receive")
+				}
 			}
 			return nil
 		})
