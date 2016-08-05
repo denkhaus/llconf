@@ -87,8 +87,8 @@ debug:
 
 ################################################################################
 build: git-pre
-	$(call build_release, "linux", "arm64", $(BUILD_TARGET_ARM64))
-	$(call build_release, "linux", "amd64", $(BUILD_TARGET_AMD64))
+	$(call build_release,"linux","arm64", $(BUILD_TARGET_ARM64))
+	$(call build_release,"linux","amd64", $(BUILD_TARGET_AMD64))
 	@echo "\n################# ---->  deploy $(BUILD_TARGET_AMD64)"
 	@cp $(BUILD_TARGET_AMD64) $(GOBIN)/llconf
 	
