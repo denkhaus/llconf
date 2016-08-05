@@ -15,7 +15,7 @@ DOCKER_IMAGE		= denkhaus/llconf
 define build_release
 	@echo "\n\n################# ----> build release $(CURRENT_REVISION) for $1/$2 -> target $3"
 	@rm -f $3
-	env GOOS=$1 GOARCH=$2 go build -o $3 \
+	@env GOOS=$1 GOARCH=$2 go build -o $3 \
 		-ldflags "-w -s \
 		-X main.Revision=$(SHA) \
 		-X main.AppVersion=$(BUILD_VERSION)"			
@@ -24,7 +24,7 @@ endef
 ################################################################################
 define upload_release
 	@echo "\n\n################# ----> upload release $(CURRENT_REVISION) for $1/$2 -> target $3"	
-	@github-release upload \
+	github-release upload \
 	    -u denkhaus \
 	    -r llconf \
 	    -t $(SHA) \
