@@ -35,7 +35,8 @@ func Compile(folders ...string) (map[string]promise.Promise, error) {
 	inputs := []parser.Input{}
 
 	for filename := range ch {
-		if content, err := ioutil.ReadFile(filename); err != nil {
+		content, err := ioutil.ReadFile(filename)
+		if err != nil {
 			return nil, err
 		}
 
