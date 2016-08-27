@@ -1,3 +1,4 @@
+SOURCES				= $(wildcard *.go **/*.go **/**/*.go)
 SHA 				= $(shell git rev-parse --short HEAD)
 HOSTNAME			= $(shell hostname)
 BUILD_VERSION 		= $(shell date -u +%y-%m-%d_%H\:%M\:%S)
@@ -87,7 +88,7 @@ debug:
 	docker run -it --rm --entrypoint /bin/bash $(DOCKER_IMAGE) 
 
 ################################################################################
-build: git-pre
+build: $(SOURCES) git-pre
 	#$(call build_release,linux,arm,$(BUILD_TARGET_ARM))
 	#$(call build_release,linux,arm64,$(BUILD_TARGET_ARM64))
 	$(call build_release,linux,amd64,$(BUILD_TARGET_AMD64))
