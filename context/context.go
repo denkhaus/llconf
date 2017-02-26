@@ -577,6 +577,10 @@ func (p *context) SendPromise(tree promise.Promise) error {
 	}
 
 	stdout := os.Stdout
+	defer func() {
+		os.Stdout = stdout
+	}()
+
 	logging.Logger.Info("send promise")
 	if err := p.sender.Send(cmd); err != nil {
 		return errors.Annotate(err, "send")
